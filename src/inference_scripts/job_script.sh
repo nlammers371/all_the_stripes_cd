@@ -3,7 +3,7 @@
 #SBATCH --job-name=savio_test
 #
 # Partition:
-#SBATCH --partition=savio
+#SBATCH --partition=savio2
 #
 # QoS:
 #SBATCH --qos=savio_normal
@@ -18,10 +18,10 @@
 #SBATCH --cpus-per-task=1
 #
 # Number of Processors per Node:
-#SBATCH --ntasks-per-node=20
+#SBATCH --ntasks-per-node=24
 #
 # Wall clock limit:
-#SBATCH --time=00:01:00
+#SBATCH --time=00:05:00
 #
 ## Command(s) to run:
 module load matlab/R2015a
