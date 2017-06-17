@@ -101,3 +101,4 @@ Warning: Principal matrix logarithm is not defined for A with nonpositive real e
 {Undefined function or variable 'formatOut'.
 } 
 >> >> Parallel pool using the 'local' profile is shutting down.
+>> 
