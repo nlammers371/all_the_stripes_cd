@@ -22,11 +22,11 @@ end
 %------------------Define Inference Variables------------------------------%
 ap_range = 40:41;
 K = 3;
-%alpha = interp_struct(1).alpha;
-alpha = 0;
+alpha = interp_struct(1).alpha;
+% alpha = 0;
 deltaT = interp_struct(1).dT;
-%w = interp_struct(1).w;
-w = 2;
+w = interp_struct(1).w;
+% w = 2;
 % max num workers
 pool_max = 10;
 % set num local runs
