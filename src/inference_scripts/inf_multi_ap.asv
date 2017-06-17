@@ -25,8 +25,9 @@ K = 3;
 alpha = interp_struct(1).alpha;
 deltaT = interp_struct(1).dT;
 w = interp_struct(1).w;
+w = 3
 % max num workers
-pool_max = 10;
+pool_max = 8;
 % set num local runs
 n_localEM = 25;
 % set max steps per inference
@@ -52,8 +53,12 @@ for s = 1:length(ap_range)
     fluo_data = cell([length(trace_ind), 1]);
     t_pass = 1;
     for tr = 1:length(trace_ind)
-        fluo_data{tr} = interp_struct(trace_ind(tr)).fluo;
-    end
+        trace = interp_struct(trace_ind(tr)).fluo;
+        if length(trace) > w
+            fluo_data{tr} = trace;
+            t_pass = t_pass + 1;
+    
+        end
     % random initialization of model parameters
     param_init = initialize_random (K, w, fluo_data);
     % approximate inference assuming iid data for param initialization
@@ -61,6 +66,7 @@ for s = 1:length(ap_range)
         param_init.noise, K, w, alpha, 1000, 1e-4);
     noise_iid = 1/sqrt(exp(local_iid_out.lambda_log));
     v_iid = exp(local_iid_out.v_logs);
+    break
     parfor i_local = 1:n_localEM
         % random initialization of model parameters
         param_init = initialize_random_with_priors(K, noise_iid, v_iid);
