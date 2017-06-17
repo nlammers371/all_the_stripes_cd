@@ -22,7 +22,8 @@ end
 %------------------Define Inference Variables------------------------------%
 ap_range = 40:41;
 K = 3;
-alpha = interp_struct(1).alpha;
+%alpha = interp_struct(1).alpha;
+alpha = 0;
 deltaT = interp_struct(1).dT;
 %w = interp_struct(1).w;
 w = 2;
@@ -35,7 +36,7 @@ n_steps_max = 1;
 % set convergence criteria
 eps = 10e-4;
 % initialize parpool
-%pool = parpool(pool_max);
+pool = parpool(pool_max);
 % structure array to store the analysis data
 outputs = struct;
 local_meta = struct;
