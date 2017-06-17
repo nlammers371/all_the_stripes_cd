@@ -20,7 +20,7 @@ for ap = apIndex
     iter = iter + 1;
 end
 %------------------Define Inference Variables------------------------------%
-ap_range = [31:36];
+ap_range = [49:53];
 K = 3;
 alpha = interp_struct(1).alpha;
 deltaT = interp_struct(1).dT;
