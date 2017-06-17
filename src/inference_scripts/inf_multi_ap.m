@@ -1,11 +1,13 @@
+addpath('../utilities');
 % ---------------------- Generate synthetic data ----------------------
 datapath = '../../processed_data/';
 dataname = 'eveSet_2017_06_15.mat';
-outpath = '../../inference_results';
-
-if exist(outpath) ~= 7
-    mkdir(outpath);
+out_dir =  '../../inference_results';
+outname = 'eveSet_2017_06_15';
+if exist(out_dir) ~= 7
+    mkdir(out_dir);
 end
+
 % Load data for inference into struct named: interp_struct
 load([datapath dataname]);
 
@@ -22,30 +24,32 @@ ap_range = 40:41;
 K = 3;
 alpha = interp_struct(1).alpha;
 deltaT = interp_struct(1).dT;
-w = 2;
-%w = interp_struct(1).w;
+w = interp_struct(1).w;
+% max num workers
+pool_max = 10;
+% set num local runs
+n_localEM = 25;
+% set max steps per inference
+n_steps_max = 1000;
+% set convergence criteria
+eps = 10e-4;
 % initialize parpool
-pool = parpool(10);
-% structure to store synthetic data sets
-data = struct;
-% extract the synthetic data corresponding to the [set, i] pair
-fluo_data = data(1).fluo_data;
+pool = parpool(pool_max);
 % structure array to store the analysis data
 outputs = struct;
 local_meta = struct;
 init_meta = struct;
-i_iter = 1;
 
-for set = 1:length(ap_range)
+for s = 1:length(ap_range)
     local_struct = struct;
     init_struct = struct;
-    ap = ap_range(set);
+    ap = ap_range(s);
     % initialize logL to - infinity
     logL_max = -Inf;
     
     % extract fluo_data
+    trace_ind = find([interp_struct.AP]==ap);
     fluo_data = cell([length(trace_ind), 1]);
-    tace_ind = find([interp_struct.AP]==ap);
     for tr = 1:length(trace_ind)
         fluo_data{tr} = interp_struct(trace_ind(tr)).fluo;
     end
@@ -70,14 +74,14 @@ for set = 1:length(ap_range)
         init_struct(i_local).R_init = logm(A_log_init)/deltaT;
         init_struct(i_local).v_init = v_init;
         init_struct(i_local).noise_init = noise_init;
-        init_struct(i_local).set_id = set;
+        init_struct(i_local).set_id = s;
         init_struct(i_local).subset_id = i_local;
         % localEM call
         local_out = local_em_MS2 (fluo_data, ...
             v_init, noise_init, pi0_log_init', A_log_init, K, w, ...
             alpha, n_steps_max, eps);
         % Save Results 
-        local_struct(i_local).set_id = set;
+        local_struct(i_local).set_id = s;
         local_struct(i_local).subset_id = i_local;
         local_struct(i_local).logL = local_out.logL;
         local_struct(i_local).A_log = local_out.A_log;
@@ -91,45 +95,39 @@ for set = 1:length(ap_range)
         local_struct(i_local).total_time = local_out.total_time;
         local_struct(i_local).total_steps = local_out.n_iters;
     end
-    local_meta(set).init = init_struct;
-    local_meta(set).local = local_struct;
+    local_meta(s).init = init_struct;
+    local_meta(s).local = local_struct;
     [logL, max_index] = max([local_struct.logL]);
-    outputs(set).set_id = set;
-    outputs(set).pi0 =exp(local_struct(max_index).pi0_log);
-    outputs(set).pi0_log = local_struct(max_index).pi0_log;
+    outputs(s).set_id = s;
+    outputs(s).pi0 =exp(local_struct(max_index).pi0_log);
+    outputs(s).pi0_log = local_struct(max_index).pi0_log;
 
-    outputs(set).v = local_struct(max_index).v(:);
-    outputs(set).r = local_struct(max_index).r(:);
+    outputs(s).v = local_struct(max_index).v(:);
+    outputs(s).r = local_struct(max_index).r(:);
 
-    outputs(set).noise = local_struct(max_index).noise;
+    outputs(s).noise = local_struct(max_index).noise;
 
-    outputs(set).A = local_struct(max_index).A(:);
-    outputs(set).A_mat = local_struct(max_index).A;
-    outputs(set).A_log = local_struct(max_index).A_log;
+    outputs(s).A = local_struct(max_index).A(:);
+    outputs(s).A_mat = local_struct(max_index).A;
+    outputs(s).A_log = local_struct(max_index).A_log;
 
-    outputs(set).R = local_struct(max_index).R(:);
-    outputs(set).R_mat = local_struct(max_index).R;
-    outputs(set).AP = ap;
-    outputs(set).N = apCount(apIndex==ap);
-    outputs(set).w = w;
-    outputs(set).alpha = alpha;
-    outputs(set).deltaT = deltaT;
-    outputs(set).total_time = local_struct(max_index).total_time;
-    outputs(set).total_steps = local_struct(max_index).total_steps;
+    outputs(s).R = local_struct(max_index).R(:);
+    outputs(s).R_mat = local_struct(max_index).R;
+    outputs(s).AP = ap;
+    outputs(s).N = apCounts(apIndex==ap);
+    outputs(s).w = w;
+    outputs(s).alpha = alpha;
+    outputs(s).deltaT = deltaT;
+    outputs(s).total_time = local_struct(max_index).total_time;
+    outputs(s).total_steps = local_struct(max_index).total_steps;
 end
 
 % extract the current date in a string format
 formatOut = 'yyyymmdd_HH_MM';
 date_str = datestr(datetime('now'),formatOut);
-
+fName = [outname '_' num2str(min(ap_range)) '_' num2str(max(ap_range)) ];
 % save the statistical validation results into a '.mat' file
-save([out_dir '/' date_str '_results.mat'], 'outputs');
-save([out_dir '/' date_str '_all_inference_results.mat'], 'local_meta');
+save([out_dir '/' fName '_results.mat'], 'outputs');
+save([out_dir '/' fName '_all_inference_results.mat'], 'local_meta');
 
-% save the parameters used for data generation into a '.mat' file
-save([dat_dir '/' date_str '_parameters.mat'], 'synthetic_parameters');
-
-% save the generated data into a '.mat' file
-save([dat_dir '/' date_str '_data.mat'], 'data');
-
-% delete(pool)
+delete(pool)
