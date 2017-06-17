@@ -24,13 +24,14 @@ ap_range = 40:41;
 K = 3;
 alpha = interp_struct(1).alpha;
 deltaT = interp_struct(1).dT;
-w = interp_struct(1).w;
+%w = interp_struct(1).w;
+w = 2;
 % max num workers
 pool_max = 10;
 % set num local runs
-n_localEM = 25;
+n_localEM = 10;
 % set max steps per inference
-n_steps_max = 1000;
+n_steps_max = 1;
 % set convergence criteria
 eps = 10e-4;
 % initialize parpool
