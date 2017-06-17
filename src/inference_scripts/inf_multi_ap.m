@@ -22,11 +22,11 @@ end
 %------------------Define Inference Variables------------------------------%
 ap_range = 40:41;
 K = 3;
-alpha = interp_struct(1).alpha;
-% alpha = 0;
+% alpha = interp_struct(1).alpha;
+alpha = 0;
 deltaT = interp_struct(1).dT;
-w = interp_struct(1).w;
-% w = 2;
+% w = interp_struct(1).w;
+w = 2;
 % max num workers
 pool_max = 10;
 % set num local runs
@@ -122,14 +122,14 @@ for s = 1:length(ap_range)
     outputs(s).deltaT = deltaT;
     outputs(s).total_time = local_struct(max_index).total_time;
     outputs(s).total_steps = local_struct(max_index).total_steps;
+    output = outputs(s);
+    local_meta_out = local_meta(s);
+    % extract the current date in a string format
+    date_str = datestr(datetime('now'),formatOut);
+    fName = [outname '_ap' num2str(ap)];
+    % save the statistical validation results into a '.mat' file
+    save([out_dir '/' fName '_results.mat'], 'output');
+    save([out_dir '/' fName '_all_inference_results.mat'], 'local_meta_out');
 end
-
-% extract the current date in a string format
-formatOut = 'yyyymmdd_HH_MM';
-date_str = datestr(datetime('now'),formatOut);
-fName = [outname '_' num2str(min(ap_range)) '_' num2str(max(ap_range)) ];
-% save the statistical validation results into a '.mat' file
-save([out_dir '/' fName '_results.mat'], 'outputs');
-save([out_dir '/' fName '_all_inference_results.mat'], 'local_meta');
 
 delete(pool)
