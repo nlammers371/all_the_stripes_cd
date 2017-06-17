@@ -21,7 +21,7 @@
 #SBATCH --ntasks-per-node=24
 #
 # Wall clock limit:
-#SBATCH --time=00:05:00
+#SBATCH --time=00:10:00
 #
 ## Command(s) to run:
 module load matlab/R2015a
