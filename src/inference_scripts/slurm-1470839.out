@@ -12,4 +12,4 @@ For product information, visit www.mathworks.com.
 	Academic License
 
 >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> Starting parallel pool (parpool) using the 'local' profile ... connected to 10 workers.
->> >> >> >> >> >> 
+>> >> >> >> >> >> slurmstepd: error: *** JOB 1470839 ON n0043.savio2 CANCELLED AT 2017-06-17T12:12:41 DUE TO TIME LIMIT ***
