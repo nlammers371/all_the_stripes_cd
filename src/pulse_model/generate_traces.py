@@ -1,0 +1,195 @@
+import numpy as np
+#from matplotlib import pyplot as plt
+import math
+from itertools import chain
+#Simple generator function to generate traces for training
+#For now, assume that number of discrete states and system "memory" are known
+#Question: can an RNN correctly infer loading rates and trajectories
+#           if trained on traces generated using arbitrary A and v matrices?
+
+def generate_traces_gill(memory, length, input_size, batch_size, num_steps=1, out_mem=1, v_num=None,r_mat=np.array([]), v=np.array([]), switch_low=1, switch_high = 12, noise_scale =.025, alpha=1.0):
+    #define convolution kernel
+    if alpha > 0:
+        alpha_vec = [(float(i + 1) / alpha + (float(i) / alpha)) / 2.0 * (i < alpha) * ((i + 1) <= alpha)
+                     + ((alpha - i)*(1 + float(i) / alpha) / 2.0 + i + 1 - alpha) * (i < alpha) * (i + 1 > alpha)
+                     + 1 * (i >= alpha) for i in xrange(memory)]
+
+        #alpha_vec = np.array(alpha_vec[::-1])
+    else:
+        alpha_vec = np.array([1.0]*memory)
+    kernel = np.ones(memory)*alpha_vec
+
+    out_kernel = np.ones(out_mem)
+
+    for step in xrange(num_steps):
+        input_list = []
+        label_list = []
+        int_label_list = []
+        int_inputs_nn = []
+        int_input_list = []
+
+        # Set scale of outputs
+        promoter_range = (input_size - 1) / memory + 1
+        label_size = (input_size - 1) / (memory / out_mem) + 1
+        for b in xrange(batch_size):
+            #Determine number of states for trace
+            if not v.any():
+                if not v_num:
+                    v_size = np.random.randint(2,promoter_range)
+                else:
+                    v_size = v_num
+                v_choices = np.random.choice(range(promoter_range), size=v_size,replace=False)
+            else:
+                v_size = len(v)
+                v_choices = v
+
+            if not r_mat.any():
+                r_raw = np.random.random((v_size,v_size)) * 1.0 / ((v_size-1)*switch_low)
+                R = r_raw - np.identity(v_size)*r_raw - np.identity(v_size)*np.tile(np.sum(r_raw - r_raw*np.identity(v_size),axis=0),(v_size,1))
+            else:
+                R = r_mat
+
+            trajectory = np.zeros((length,label_size), dtype='int')
+            promoter_states = []
+            #Generate promoter trajectory
+            T_float = 0.0
+            transitions = [0.0]
+            p_curr = np.random.choice(v_size)
+            promoter_states.append(v_choices[p_curr])
+
+            while T_float < length:
+                #time step
+                r = np.random.random()
+                tau = 1 / -R[p_curr, p_curr]
+                t = tau * math.log(1.0 / r)
+                transitions.append(T_float + t)
+                p_probs = R[:,p_curr] / -R[p_curr, p_curr]
+                p_probs[p_curr] = 0
+
+                p_curr = np.random.choice(v_size,p=p_probs)
+                promoter_states.append(v_choices[p_curr])
+                T_float += t
+
+            tr_array = np.array(transitions)
+            promoter_states = promoter_states[:-1]
+            promoter_grid = np.zeros(length)
+            #promoter_grid_simple = np.zeros(length)
+            for e in xrange(1,length):
+                #Find transitions that occurred within preceding time step
+                if e==1:
+                    tr_prev=0
+                else:
+                    tr_prev = np.max(np.where(tr_array < e-1)[0])
+
+                tr_post = np.min(np.where(tr_array >= e)[0])
+
+                tr = transitions[tr_prev:tr_post+1]
+                tr[0] = e-1
+                tr[-1] = e
+                tr_diffs = np.diff(tr)
+                p_states = promoter_states[tr_prev:tr_post]
+                promoter_grid[e] = np.sum(tr_diffs*p_states)
+
+                #promoter_grid_simple[e] = promoter_states[tr_prev]
+            #Convolve Promoter series to desired level
+            promoter_grid_convolved = np.floor(np.convolve(out_kernel,promoter_grid,mode='full'))
+            promoter_grid_convolved = promoter_grid_convolved[0:length]
+            promoter_grid_convolved = promoter_grid_convolved.astype('int')
+            promoter_grid = promoter_grid.astype('int')
+            for s in xrange(length):
+                trajectory[s, int(np.round(promoter_grid_convolved[s]))] = 1
+
+            #Convolve with kernel to generate compound signal
+            F_series = np.floor(np.convolve(kernel,promoter_grid,mode='full'))
+            F_series = F_series[0:length]
+            #Apply noise
+            noise_vec = np.random.randn(length)*noise_scale*float(np.mean(v))
+
+            F_noised = F_series + noise_vec
+            F_noised[F_noised < 0] = 0
+            full_input = np.zeros((length, input_size),dtype='float')
+            for f in xrange(length):
+                full_input[f,max(0,min(input_size-1, int(F_noised[f])))] = 1
+
+            input_list.append(np.ndarray.tolist(full_input))
+            label_list.append(np.ndarray.tolist(trajectory))
+            int_label_list.append(promoter_grid.tolist())
+            int_input_list.append(F_noised.tolist())
+            int_inputs_nn.append(F_series)
+
+        seq_lengths = [length]*batch_size
+        return(input_list, label_list, seq_lengths, int_label_list, int_input_list, int_inputs_nn)
+
+def generate_traces_prob_mat(A, v, memory, length, input_size, batch_size, alpha, noise_scale):
+    """
+
+    :param A: Transition probability matrix (square matrix with columns summing to 1)
+    :param v: vector of intensities associated with each states
+    :param memory: memory of system--defines length of convolution kernal.
+    :param length: length of traces in time steps
+    :param input_size: magnitude of compound fluorescence signal
+    :param batch_size: num traces per batch
+    :param alpha: fractional parameter expressing remp-up time for MS2 in time steps
+    "param noise_scale: magnitidue of noise to add relative to max fluo
+    :return: set of compoound fluo traces and associated promoter trajectories
+    """
+    #define convolution kernel
+    if alpha > 0:
+        alpha_vec = [(float(i + 1) / alpha + (float(i) / alpha)) / 2.0 * (i < alpha) * ((i + 1) <= alpha)
+                     + ((alpha - i)*(1 + float(i) / alpha) / 2.0 + i + 1 - alpha) * (i < alpha) * (i + 1 > alpha)
+                     + 1 * (i >= alpha) for i in xrange(memory)]
+
+        #alpha_vec = np.array(alpha_vec[::-1])
+    else:
+        alpha_vec = np.array([1.0]*memory)
+    kernel = np.ones(memory)*alpha_vec
+    input_list = []
+    label_list = []
+    label_size = (input_size - 1) / (memory) + 1
+    num_states = len(v)
+    for b in xrange(batch_size):
+        trajectory = np.zeros((label_size,length), dtype='int')
+        v_list = []
+        p_curr = np.random.choice(num_states)
+        v_list.append(v[p_curr])
+        trajectory[v_list[0],0] = 1
+        choice_ind = p_curr
+        for s in xrange(1,length):
+            choice_ind = np.random.choice(num_states, p=A[:, choice_ind])
+            v_new = v[choice_ind]
+            v_list.append(v_new)
+            trajectory[v_new,s] = 1
+
+        F_series = np.convolve(kernel,np.array(v_list),mode='full')
+        F_series = F_series[0:length]
+
+        noise_vec = np.random.randn(length) * noise_scale * float(input_size)
+        F_noised = F_series + noise_vec
+        F_noised[F_noised < 0] = 0
+        full_input = np.zeros((input_size,length))
+        for f in xrange(length):
+            full_input[int(F_series[f]),f] = 1
+
+        input_list.append(F_noised)
+        label_list.append(v_list)
+
+    return(input_list, label_list)
+
+if __name__ == "__main__":
+
+    # memory
+    w = 20
+    # Fix trace length for now
+    T = 100
+    # Input magnitude
+    F = 501
+    # Number of traces per batch
+    batch_size = 1
+    R = np.array([[-.007,.007,.006],[.004,-.01,.008],[.003,.003,-.014]]) * 6.0
+    v = np.array([0.0,4.0,8.0])
+    batches = generate_traces_gill(w,T,F,batch_size,1,out_mem=4, v_num=5, r_mat=np.array([]), v=np.array([]), noise_scale =.025, alpha=1.0)
+
+    for batch in batches:
+        x_inputs, y_labels, seq_lengths, _, int_inputs, conv_labels = batch
+        print(len(y_labels[0][0]))
+        #plt.plot(np.array(int_lb_conv[0])
