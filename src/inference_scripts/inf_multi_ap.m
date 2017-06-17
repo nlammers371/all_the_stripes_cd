@@ -124,8 +124,7 @@ for s = 1:length(ap_range)
     outputs(s).total_steps = local_struct(max_index).total_steps;
     output = outputs(s);
     local_meta_out = local_meta(s);
-    % extract the current date in a string format
-    date_str = datestr(datetime('now'),formatOut);
+
     fName = [outname '_ap' num2str(ap)];
     % save the statistical validation results into a '.mat' file
     save([out_dir '/' fName '_results.mat'], 'output');
