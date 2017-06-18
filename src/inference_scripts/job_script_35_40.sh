@@ -30,4 +30,4 @@ module load matlab/R2015a
 # This directory can then be referenced by assigning it to
 # a 'parcluster.JobStorageLocation' property in your script.
 mkdir -p /global/scratch/$USER/$SLURM_JOB_ID
-matlab -nodisplay -nosplash -nodesktop < inf_multi_ap_49_53.m
+matlab -nodisplay -nosplash -nodesktop < inf_multi_ap_35_40.m

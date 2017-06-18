@@ -20,14 +20,13 @@ for ap = apIndex
     iter = iter + 1;
 end
 %------------------Define Inference Variables------------------------------%
-ap_range = 40:41;
+ap_groups = {[35,36] ,[37,38] ,[39,40]};
 K = 3;
 alpha = interp_struct(1).alpha;
 deltaT = interp_struct(1).dT;
 w = interp_struct(1).w;
-w = 3
 % max num workers
-pool_max = 8;
+pool_max = 10;
 % set num local runs
 n_localEM = 25;
 % set max steps per inference
@@ -35,30 +34,27 @@ n_steps_max = 1000;
 % set convergence criteria
 eps = 10e-4;
 % initialize parpool
-%pool = parpool(pool_max);
+pool = parpool(pool_max);
 % structure array to store the analysis data
 outputs = struct;
 local_meta = struct;
 init_meta = struct;
 
-for s = 1:length(ap_range)
+for s = 1:length(ap_groups)
     local_struct = struct;
     init_struct = struct;
-    ap = ap_range(s);
+    ap_list = ap_groups{s};
+    mean_ap = mean(ap_list);
     % initialize logL to - infinity
     logL_max = -Inf;
     
     % extract fluo_data
-    trace_ind = find([interp_struct.AP]==ap);
+    trace_ind = find(ismember([interp_struct.AP],ap_list));
     fluo_data = cell([length(trace_ind), 1]);
     t_pass = 1;
     for tr = 1:length(trace_ind)
-        trace = interp_struct(trace_ind(tr)).fluo;
-        if length(trace) > w
-            fluo_data{tr} = trace;
-            t_pass = t_pass + 1;
-    
-        end
+        fluo_data{tr} = interp_struct(trace_ind(tr)).fluo;
+    end
     % random initialization of model parameters
     param_init = initialize_random (K, w, fluo_data);
     % approximate inference assuming iid data for param initialization
@@ -66,7 +62,6 @@ for s = 1:length(ap_range)
         param_init.noise, K, w, alpha, 1000, 1e-4);
     noise_iid = 1/sqrt(exp(local_iid_out.lambda_log));
     v_iid = exp(local_iid_out.v_logs);
-    break
     parfor i_local = 1:n_localEM
         % random initialization of model parameters
         param_init = initialize_random_with_priors(K, noise_iid, v_iid);
@@ -119,21 +114,20 @@ for s = 1:length(ap_range)
 
     outputs(s).R = local_struct(max_index).R(:);
     outputs(s).R_mat = local_struct(max_index).R;
-    outputs(s).AP = ap;
-    outputs(s).N = apCounts(apIndex==ap);
+    outputs(s).AP = mean_ap;
+    outputs(s).N = apCounts(ismember(apIndex,ap_list));
     outputs(s).w = w;
     outputs(s).alpha = alpha;
     outputs(s).deltaT = deltaT;
     outputs(s).total_time = local_struct(max_index).total_time;
     outputs(s).total_steps = local_struct(max_index).total_steps;
-end
+    output = outputs(s);
+    local_meta_out = local_meta(s);
 
-% extract the current date in a string format
-formatOut = 'yyyymmdd_HH_MM';
-date_str = datestr(datetime('now'),formatOut);
-fName = [outname '_' num2str(min(ap_range)) '_' num2str(max(ap_range)) ];
-% save the statistical validation results into a '.mat' file
-save([out_dir '/' fName '_results.mat'], 'outputs');
-save([out_dir '/' fName '_all_inference_results.mat'], 'local_meta');
+    fName = [outname '_ap' num2str(ap_list(1)) '_' num2_str(ap_list(end))];
+    % save the statistical validation results into a '.mat' file
+    save([out_dir '/' fName '_results.mat'], 'output');
+    %save([out_dir '/' fName '_all_inference_results.mat'], 'local_meta_out');
+end
 
 delete(pool)
