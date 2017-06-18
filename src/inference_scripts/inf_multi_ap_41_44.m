@@ -20,7 +20,7 @@ for ap = apIndex
     iter = iter + 1;
 end
 %------------------Define Inference Variables------------------------------%
-ap_range = [40,41,42];
+ap_groups = {[41,42] ,[43,44]};
 K = 3;
 alpha = interp_struct(1).alpha;
 deltaT = interp_struct(1).dT;
@@ -30,7 +30,7 @@ pool_max = 10;
 % set num local runs
 n_localEM = 25;
 % set max steps per inference
-n_steps_max = 100;
+n_steps_max = 1000;
 % set convergence criteria
 eps = 10e-4;
 % initialize parpool
@@ -40,15 +40,16 @@ outputs = struct;
 local_meta = struct;
 init_meta = struct;
 
-for s = 1:length(ap_range)
+for s = 1:length(ap_groups)
     local_struct = struct;
     init_struct = struct;
-    ap = ap_range(s);
+    ap_list = ap_groups{s};
+    mean_ap = mean(ap_list);
     % initialize logL to - infinity
     logL_max = -Inf;
     
     % extract fluo_data
-    trace_ind = find([interp_struct.AP]==ap);
+    trace_ind = find(ismember([interp_struct.AP],ap_list));
     fluo_data = cell([length(trace_ind), 1]);
     t_pass = 1;
     for tr = 1:length(trace_ind)
@@ -113,8 +114,8 @@ for s = 1:length(ap_range)
 
     outputs(s).R = local_struct(max_index).R(:);
     outputs(s).R_mat = local_struct(max_index).R;
-    outputs(s).AP = ap;
-    outputs(s).N = apCounts(apIndex==ap);
+    outputs(s).AP = mean_ap;
+    outputs(s).N = apCounts(ismember(apIndex,ap_list));
     outputs(s).w = w;
     outputs(s).alpha = alpha;
     outputs(s).deltaT = deltaT;
@@ -123,10 +124,10 @@ for s = 1:length(ap_range)
     output = outputs(s);
     local_meta_out = local_meta(s);
 
-    fName = [outname '_ap' num2str(ap)];
+    fName = [outname '_ap' num2str(ap_list(1)) '_' num2_str(ap_list(end))];
     % save the statistical validation results into a '.mat' file
     save([out_dir '/' fName '_results.mat'], 'output');
-    save([out_dir '/' fName '_all_inference_results.mat'], 'local_meta_out');
+    %save([out_dir '/' fName '_all_inference_results.mat'], 'local_meta_out');
 end
 
 delete(pool)
