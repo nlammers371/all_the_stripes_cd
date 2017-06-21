@@ -2,7 +2,7 @@
 %Set path to folder containing relevant projects
 folder_path = '../../../data/';
 outpath = '../../processed_data/';
-outName = 'eveSet_2017_06_15.mat';
+outName = 'eveSet_2017_06_21_250_only.mat';
 if exist(outpath) ~= 7
     mkdir(outpath);
 end
@@ -10,7 +10,7 @@ files = dir(folder_path);
 
 filenames = {};
 for i = 1:length(files)
-    if strfind(files(i).name,'.mat') > 0
+    if ~isempty(strfind(files(i).name,'.mat')) && ~isempty(strfind(files(i).name,'250'))
         filenames = [filenames {files(i).name}];
     end
 end

@@ -3,7 +3,7 @@ addpath('../utilities');
 datapath = '../../processed_data/';
 dataname = 'eveSet_2017_06_21_250_only.mat';
 out_dir =  '../../inference_results';
-outname = 'eveSet_2017_06_21_250_only';
+outname = 'eveSet_2017_06_15';
 if exist(out_dir) ~= 7
     mkdir(out_dir);
 end
@@ -20,7 +20,7 @@ for ap = apIndex
     iter = iter + 1;
 end
 %------------------Define Inference Variables------------------------------%
-ap_groups = {[40:47], [49:,52] , [53,54]};
+ap_groups = {[49,50], [51,52] , [53,54]};
 K = 3;
 alpha = interp_struct(1).alpha;
 deltaT = interp_struct(1).dT;

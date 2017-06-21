@@ -1,9 +1,10 @@
 addpath('../utilities');
 % ---------------------- Generate synthetic data ----------------------
 datapath = '../../processed_data/';
-dataname = 'eveSet_2017_06_21_250_only.mat';
-out_dir =  '../../inference_results';
-outname = 'eveSet_2017_06_21_250_only';
+datestr = '2017_06_21';
+dataname = ['eveSet_' datestr '_250_only.mat'];
+out_dir =  ['../../inference_results/' datestr '/'];
+outname = ['eveSet_2017_' datestr '_only'];
 if exist(out_dir) ~= 7
     mkdir(out_dir);
 end
@@ -19,8 +20,9 @@ for ap = apIndex
     apCounts(iter) = sum([interp_struct([interp_struct.AP]==ap).N]);
     iter = iter + 1;
 end
+
 %------------------Define Inference Variables------------------------------%
-ap_groups = {[40:47], [49:,52] , [53,54]};
+ap_groups = {[40:47], [49:55]};
 K = 3;
 alpha = interp_struct(1).alpha;
 deltaT = interp_struct(1).dT;
