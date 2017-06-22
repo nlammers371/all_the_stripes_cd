@@ -161,7 +161,7 @@ for i = 1:n_grps
     end
 end
 saveas(figure(1), [outpath, 'fluo_his.png'],'png');
-
+%%
 figure(2)
 for i = 1:n_grps
     ap_struct = interp_struct(ismember([interp_struct.AP],ap_vec(ap_grp_ind==ap_grps(i))));
@@ -186,6 +186,30 @@ for i = 1:n_grps
     end
 end
 saveas(figure(2), [outpath, 'pause_his.png'],'png');
+%%
+set_titles = {'150_1', '200', '150_2', '250 (suspect set)'};
+figure(3)
+increment = floor(60 / n_sets);
+hold on
+for j = 1:n_sets
+    f_list = [];
+    for a = 1:length(interp_struct)
+        if strcmp(interp_struct(a).set,sets{j})
+            f_list = [f_list interp_struct(a).fluo];
+        end
+    end
+    if isempty(f_list)
+        continue
+    end
+    fluo_ct = histc(f_list, FluoBins);
+    plot(FluoBins, cumsum(fluo_ct) / sum(fluo_ct), 'Color',cm(increment*j,:),'LineWidth', 2);
+    title('Cumulative PDF (All AP Positions)'); 
+    axis([0,400000,0,1])
+end 
+legend(set_titles{:}, 'Location','southeast')
+hold off
+saveas(figure(3), [outpath, 'cum_his.png'],'png');
+
 %%
 
 % Truncate Traces with Unreasonably Long Pauses

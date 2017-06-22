@@ -1,6 +1,6 @@
 addpath('../utilities/');
 
-date_str = '2017_06_15';
+date_str = '2017_06_21';
 meta_folder = 'inference_results';
 folder_path = ['../../inference_results/' date_str '/'];
 files = dir(folder_path);
@@ -48,7 +48,6 @@ glb_all = glb_all(ismember(floor([glb_all.AP]),ap_range));
 %load traces (saved as "preprocessed")
 traces_all = load(['../../processed_data/eveSet_2017_06_15.mat']);
 traces_all = traces_all.interp_struct;
-
 traces_all = traces_all(ismember(floor([traces_all.AP]),ap_range));
 
 
