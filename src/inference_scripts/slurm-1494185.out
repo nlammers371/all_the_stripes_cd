@@ -398,3 +398,15 @@ Warning: Principal matrix logarithm is not defined for A with nonpositive real e
   In logm (line 24)
   In parallel_function>make_general_channel/channel_general (line 914)
   In remoteParallelFunction (line 38)] 
+Warning: Principal matrix logarithm is not defined for A with nonpositive real eigenvalues. A non-principal matrix logarithm is returned.
+[> In funm (line 163)
+  In logm (line 24)
+  In parallel_function>make_general_channel/channel_general (line 914)
+  In remoteParallelFunction (line 38)] 
+Warning: Principal matrix logarithm is not defined for A with nonpositive real eigenvalues. A non-principal matrix logarithm is returned.
+[> In funm (line 163)
+  In logm (line 24)
+  In prob_to_rate (line 12)
+  In parallel_function>make_general_channel/channel_general (line 914)
+  In remoteParallelFunction (line 38)] 
+>> >> >> 
