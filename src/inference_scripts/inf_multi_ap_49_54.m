@@ -24,7 +24,7 @@ ap_groups = {[49,50], [51,52] , [53,54]};
 K = 3;
 alpha = interp_struct(1).alpha;
 deltaT = interp_struct(1).dT;
-w = interp_struct(1).w;
+w = 6 ; %interp_struct(1).w;
 % max num workers
 pool_max = 10;
 % set num local runs
@@ -34,7 +34,7 @@ n_steps_max = 1000;
 % set convergence criteria
 eps = 10e-4;
 % initialize parpool
-pool = parpool(pool_max);
+pool = parpool(12);
 % structure array to store the analysis data
 outputs = struct;
 local_meta = struct;
@@ -124,7 +124,7 @@ for s = 1:length(ap_groups)
     output = outputs(s);
     local_meta_out = local_meta(s);
 
-    fName = [outname '_ap' num2str(ap_list(1)) '_' num2_str(ap_list(end))];
+    fName = [outname '_ap' num2str(ap_list(1)) '_' num2str(ap_list(end))];
     % save the statistical validation results into a '.mat' file
     save([out_dir '/' fName '_results.mat'], 'output');
     %save([out_dir '/' fName '_all_inference_results.mat'], 'local_meta_out');
