@@ -115,7 +115,7 @@ for s = 1:length(ap_groups)
     outputs(s).R = local_struct(max_index).R(:);
     outputs(s).R_mat = local_struct(max_index).R;
     outputs(s).AP = mean_ap;
-    outputs(s).N = apCounts(ismember(apIndex,ap_list));
+    outputs(s).N = sum(apCounts(ismember(apIndex,ap_list)));
     outputs(s).w = w;
     outputs(s).alpha = alpha;
     outputs(s).deltaT = deltaT;
@@ -124,7 +124,7 @@ for s = 1:length(ap_groups)
     output = outputs(s);
     local_meta_out = local_meta(s);
 
-    fName = [outname '_ap' num2str(ap_list(1)) '_' num2_str(ap_list(end))];
+    fName = [outname '_ap' num2str(ap_list(1)) '_' num2str(ap_list(end))];
     % save the statistical validation results into a '.mat' file
     save([out_dir '/' fName '_results.mat'], 'output');
     %save([out_dir '/' fName '_all_inference_results.mat'], 'local_meta_out');

@@ -1,8 +1,8 @@
 %------------------------Import Compiled Particles------------------------%
 %Set path to folder containing relevant projects
 folder_path = '../../../data/';
-outpath = '../../processed_data/';
-outName = 'eveSet_2017_06_21_250_only.mat';
+outpath = '../../processed_data/data_quality/';
+outName = 'eveSet_2017_06_15.mat';
 if exist(outpath) ~= 7
     mkdir(outpath);
 end
@@ -10,7 +10,7 @@ files = dir(folder_path);
 
 filenames = {};
 for i = 1:length(files)
-    if ~isempty(strfind(files(i).name,'.mat')) && ~isempty(strfind(files(i).name,'250'))
+    if strfind(files(i).name,'.mat') > 0
         filenames = [filenames {files(i).name}];
     end
 end
@@ -101,6 +101,116 @@ for i = 1:length(trace_struct)
         i_pass = i_pass + 1;
     end
 end
+%% Run Quality Checks by data set and AP
+ap_vec = unique([interp_struct.AP]);
+% Set size of groups (# AP regions)
+grp_size = 5;
+ap_grp_ind = floor(ap_vec / grp_size);
+ap_grps = unique(ap_grp_ind);
+ap_names = {};
+for ap = ap_grps
+    ap_names = {ap_names{:} [num2str(min(ap_vec(ap_grp_ind==ap))) '-' num2str(max(ap_vec(ap_grp_ind==ap)))]};
+end
+
+sets = unique({interp_struct.set});
+n_sets = length(sets);
+n_grps = length(ap_grps);
+maxpause = 0;
+for i = 1:length(interp_struct)
+    pause_list = [];
+    fluo = interp_struct(i).fluo;
+    FluoBin = fluo==0;
+    ct = 0;
+    pct = 0;
+    for j = 1:length(fluo)
+        ct = ct*FluoBin(j) + FluoBin(j);
+        maxpause = max(maxpause, ct);
+        if pct > 0 && ct == 0
+            pause_list = [pause_list pct];
+        end
+        pct = ct;
+    end
+    interp_struct(i).pauses = pause_list;
+end
+colormap('jet');
+cm = colormap;
+increment = floor(60 / (n_grps *n_sets));
+FluoBins = 1:5000:450000;
+PauseBins = 1:maxpause;
+figure(1)
+for i = 1:n_grps
+    ap_struct = interp_struct(ismember([interp_struct.AP],ap_vec(ap_grp_ind==ap_grps(i))));
+    for j = 1:n_sets
+        f_list = [];
+        for a = 1:length(ap_struct)
+            if strcmp(ap_struct(a).set,sets{j})
+                f_list = [f_list ap_struct(a).fluo];
+            end
+        end
+        if isempty(f_list)
+            continue
+        end
+        fluo_ct = histc(f_list, FluoBins);
+        
+        subplot(n_sets,n_grps, (j-1)*n_grps + i)
+        bar(FluoBins, fluo_ct / max(fluo_ct), 'FaceColor',cm(increment*((j-1)*n_grps + i),:),...
+            'EdgeColor',cm(increment*((j-1)*n_grps + i),:));
+        set(gca,'fontsize',4)
+        title(['Fluo, AP: ' ap_names{i}]); %' Set:' sets{j}])
+        axis([0,400000,0 ,1])
+    end
+end
+saveas(figure(1), [outpath, 'fluo_his.png'],'png');
+%%
+figure(2)
+for i = 1:n_grps
+    ap_struct = interp_struct(ismember([interp_struct.AP],ap_vec(ap_grp_ind==ap_grps(i))));
+    for j = 1:n_sets
+        p_list = [];
+        for a = 1:length(ap_struct)
+            if strcmp(ap_struct(a).set,sets{j})
+                p_list = [p_list ap_struct(a).pauses];
+            end
+        end
+        if isempty(p_list)
+            continue
+        end
+        pause_ct = histc(p_list, PauseBins);
+        
+        subplot(n_sets,n_grps, (j-1)*n_grps + i)
+        bar(PauseBins, pause_ct / max(pause_ct), 'FaceColor',cm(increment*((j-1)*n_grps + i),:),...
+            'EdgeColor',cm(increment*((j-1)*n_grps + i),:));
+        set(gca,'fontsize',4)
+        title(['Pauses, AP: ' ap_names{i}]); %' Set:' sets{j}])
+        axis([0,50,0 ,1])
+    end
+end
+saveas(figure(2), [outpath, 'pause_his.png'],'png');
+%%
+set_titles = {'150_1', '200', '150_2', '250 (suspect set)'};
+figure(3)
+increment = floor(60 / n_sets);
+hold on
+for j = 1:n_sets
+    f_list = [];
+    for a = 1:length(interp_struct)
+        if strcmp(interp_struct(a).set,sets{j})
+            f_list = [f_list interp_struct(a).fluo];
+        end
+    end
+    if isempty(f_list)
+        continue
+    end
+    fluo_ct = histc(f_list, FluoBins);
+    plot(FluoBins, cumsum(fluo_ct) / sum(fluo_ct), 'Color',cm(increment*j,:),'LineWidth', 2);
+    title('Cumulative PDF (All AP Positions)'); 
+    axis([0,400000,0,1])
+end 
+legend(set_titles{:}, 'Location','southeast')
+hold off
+saveas(figure(3), [outpath, 'cum_his.png'],'png');
+
+%%
 
 % Truncate Traces with Unreasonably Long Pauses
 %Set reference p_off
@@ -141,4 +251,4 @@ if ~isempty(rm_ids)
 end
 display([num2str(cuts) ' traces truncated due to infeasibly long pauses']);
 
-save([outpath outName], 'interp_struct');
+%save([outpath outName], 'interp_struct');
