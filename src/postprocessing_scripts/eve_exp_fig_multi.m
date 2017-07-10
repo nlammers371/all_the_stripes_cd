@@ -12,10 +12,10 @@ for i = 1:length(files)
     end
 end
 
-outpath = ['../../inference_results/' date_str '/summaries/'];
-if (exist(outpath, 'dir') ~= 7)
-    mkdir(outpath);
-end
+% outpath = ['../../inference_results/' date_str '/summaries/'];
+% if (exist(outpath, 'dir') ~= 7)
+%     mkdir(outpath);
+% end
 %Iterate through result sets and concatenate into 1 combined struct
 glb_all = struct;
 for f = 1:length(filenames)
@@ -26,7 +26,7 @@ for f = 1:length(filenames)
     end
 end
 
-OutPath = ['../../fig/' 'experimental_system' '/'];
+OutPath = ['../../fig/' 'experimental_system' '/' date_str '/'];
 if exist(OutPath) ~= 7
     mkdir(OutPath);
 end
@@ -41,7 +41,7 @@ K = 3;
 dT = 18.75;
 
 %!!!set AP range
-ap_range = [31:54];
+ap_range = [40:54];
 
 glb_all = glb_all(ismember(floor([glb_all.AP]),ap_range));
 
