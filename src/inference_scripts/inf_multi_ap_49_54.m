@@ -24,7 +24,7 @@ ap_groups = {[40:47], [49:,52] , [53,54]};
 K = 3;
 alpha = interp_struct(1).alpha;
 deltaT = interp_struct(1).dT;
-w = interp_struct(1).w;
+w = 6 ; %interp_struct(1).w;
 % max num workers
 pool_max = 10;
 % set num local runs
@@ -34,7 +34,7 @@ n_steps_max = 1000;
 % set convergence criteria
 eps = 10e-4;
 % initialize parpool
-pool = parpool(pool_max);
+pool = parpool(12);
 % structure array to store the analysis data
 outputs = struct;
 local_meta = struct;
