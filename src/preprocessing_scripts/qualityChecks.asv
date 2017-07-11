@@ -55,18 +55,14 @@ i_iter = 1;
 for k = 1:length(filenames)
     raw_data  = load([filenames{k}]);
     time = raw_data.ElapsedTime*60;
-%     Normalize to Start of 14
-    
+    %Normalize to Start of 14
+%     time = time - time(raw_data.nc14);
     traces = raw_data.AllTracesVector;
     filter = sum(raw_data.ncFilter(:,ismember([raw_data.ncFilterID],nuclear_cycles)),2)>0;
     traces = traces(:,filter);
     no_cycle_start = ~isnan(max(max(traces(time < 2*60,:)))) || max(max(traces(time < 2*60,:))) > 0;
-    time = time - time(raw_data.nc14);
     for i = 1:size(traces,2)
         raw_trace = traces(:,i);
-        if length(raw_trace(~isnan(raw_trace))) < 2
-            continue
-        end
         start = find(~isnan(raw_trace),1);
         stop = find(~isnan(raw_trace),1,'last');
         trunc_trace = [raw_trace(start:stop)'];
@@ -179,24 +175,12 @@ for i = 1:length(interp_struct)
 %     saveas(t_fig, [outpath,'/traces/', 'trace_' num2str(i) '.png'],'png');
 end
 %% Histogram of Data Points by AP
-
-sets = unique({trace_struct.set});
-n_sets = length(sets);
-
-set_titles = {};
-for i = 1:length(sets)
-    start = strfind(sets{i},'\2017') + 12;
-    stop = strfind(sets{i},'\Compiled') - 1;
-    string = sets{i};
-    set_titles = {set_titles{:}  strrep(string(start:stop),'_',' ')};        
-end
-
 figure(1);
 subplot(2,1,1);
 
 colormap('jet');
 cm = colormap;
-
+n_sets = 
 ap_vec = unique([trace_struct.AP]);
 ap_ct_vec = zeros(1,length(ap_vec));
 for a = 1:length(ap_vec)
@@ -216,7 +200,7 @@ xlabel('AP Region (%)');
 saveas(figure(1), [outpath, 'data_histograms.png'],'png');
 
 %% Run Quality Checks by data set and AP
-ap_vec = unique([trace_struct.AP]);
+ap_vec = unique([interp_struct.AP]);
 % Determine appropriate AP grouping
 if min(ap_ct_vec) >= min_stat
     ap_grp_vec = ap_vec;
@@ -244,6 +228,8 @@ for ap_grp = ap_grps
     ap_names = {ap_names{:} [num2str(min(ap_vec(ap_grp_ind==ap_grp))) '-' num2str(max(ap_vec(ap_grp_ind==ap_grp)))]};
 end  
     
+sets = unique({tr.set});
+n_sets = length(sets);
 n_grps = length(ap_grps);
 
 increment = floor(60 / (n_grps *n_sets));
@@ -282,6 +268,13 @@ hold off
 saveas(figure(2), [outpath, 'fluo_his.png'],'png');
 %% Cumulative Fluorescence within Eve Stripe 2 Region
 %Make Strings for legen entries
+set_titles = {};
+for i = 1:length(sets)
+    start = strfind(sets{i},'\2017') + 12;
+    stop = strfind(sets{i},'\Compiled') - 1;
+    string = sets{i};
+    set_titles = {set_titles{:}  strrep(string(start:stop),'_',' ')};        
+end
 ap_range = 39:45;
 figure(3)
 increment = floor(60 / n_sets);
