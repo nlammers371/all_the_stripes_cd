@@ -1,10 +1,10 @@
 %------------------------Import Compiled Particles------------------------%
 %Set path to folder containing relevant projects
-folder_path = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\DropboxSingleTraces\';
+folder_path = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\';
 sub_paths = {'Eve2_ML', 'Eve2_orig'};
 key_names = {'ML', 'ORIG'};
-project = 'mHMMeve2_ml_comparisons';
-outpath = ['../projects/' project '/' ];
+project = 'mHMMeve2_ml_comparisons_07_12';
+outpath = [folder_path '/projects/' project '/' ];
 % Keyword to ensure only sets from current project are pulled
 keyword = 'eve2_20sec_';
 exclude = 'eve2_20sec_5';
