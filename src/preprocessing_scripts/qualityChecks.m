@@ -1,21 +1,25 @@
 %------------------------Import Compiled Particles------------------------%
 %Set path to folder containing relevant projects
-folder_path = 'C:\Users\Nicholas\Dropbox (Garcia Lab)\DropboxSingleTraces\Eve2_ML\';
+folder_path = 'C:\Users\Nicholas\Dropbox (Garcia Lab)\eve2_orig\';
 % folder_path = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\DropboxSingleTraces\Eve2_ML';
-project = 'mHMMeve2_ml_testing';
+project = 'mHMMeve2_orig_final_2017_07_14';
 % outName = 'eve2Sets_2017_06_15_ml.mat'
-outpath = ['../projects/' project '/' ];
+outpath = [folder_path '/projects/' project '/' ];
 % Keyword to ensure only sets from current project are pulled
-keyword = 'eve2_20sec_';
-exclude = 'eve2_20sec_5';
-
+keyword = '20sec';
+%vector of data set numbers to include
+include_vec = [7,9,10,11,12,13,15,19,20];
+% exclude_vec = [12:20 5];
+% exclude_vec(exclude_vec == 7) = 3;
 
 %-------------------------Set Summary Parameters--------------------------%
 nuclear_cycles = [14];
 % Minimumt number of data points per summary stat
 min_stat = 500;
-
-
+%Define Relevant Grouping Regions
+ap_grp_indices = {33:38,39:43,43:48};
+ap_grp_names = {'Anterior Flank', 'Eve Stripe 2','Posterior Flank'};
+ 
 if exist(outpath) ~= 7
     mkdir(outpath);
 end
@@ -28,27 +32,45 @@ subdirinfo = cell(length(dirinfo));
 for K = 1 : length(dirinfo)
     thisdir = dirinfo(K).name;
     % skip files lacking project keyword or containing names of skip sets
-    if isempty(strfind(thisdir,keyword)) || ~isempty(strfind(thisdir,exclude))
+    if isempty(strfind(thisdir,keyword)) 
         continue
     end
-    subdir_struct = dir(fullfile(folder_path,thisdir, '*.mat'));
-    dir_struct(i_pass).files = subdir_struct;
+    set_num_start_ind = strfind(thisdir,'_');
+    set_num_start_ind = set_num_start_ind(end);
+    set_num = str2num(thisdir(set_num_start_ind+1:end));
+    
+    if sum(set_num==include_vec) ~= 1 
+        continue
+    end
+    
+    particle_struct = dir(fullfile(folder_path,thisdir, 'CompiledParticles*'));
+    ap_info_struct = dir(fullfile(folder_path,thisdir, 'APDetection'));
+    dir_struct(i_pass).particles = particle_struct;
+    dir_struct(i_pass).ap_info = ap_info_struct;
     dir_struct(i_pass).folder = thisdir;
     i_pass = i_pass + 1;
 end
 
+%struct to stor AP directories
+ap_info_struct = struct;
 filenames = {};
 for i = 1:length(dir_struct)
-    subdir_struct = dir_struct(i).files;
-    for j = 1:length(subdir_struct)
-        if strfind(subdir_struct(j).name,'CompiledParticles') > 0
-            filenames = [filenames {[folder_path dir_struct(i).folder '\' subdir_struct(j).name]}];
+    particle_struct = dir_struct(i).particles;
+    if length(particle_struct) > 1
+        warning(['Multiple Compile Particles Sets Detected for set ' num2str(include_vec(i))])
+    end
+    filenames = [filenames {[folder_path dir_struct(i).folder '\' particle_struct.name]}];
+    ap_info = dir_struct(i).ap_info;
+    for j = 1:length(ap_info)
+        if strfind(ap_info(j).name,'HalfEmbryoArea') > 0
+            ap_info_struct(i).SurfPath = [folder_path dir_struct(i).folder '\APDetection\' ap_info(j).name];
+        elseif strfind(ap_info(j).name,'FullEmbryoArea') > 0           
+            ap_info_struct(i).MidPath = [folder_path dir_struct(i).folder '\APDetection\' ap_info(j).name];
         end
     end
 end
 %%
 %Data structure to store extracted trace sets
-traces_interp = struct;
 diff_traces = 0;
 trace_struct = struct;
 i_iter = 1;
@@ -57,9 +79,10 @@ for k = 1:length(filenames)
     time = raw_data.ElapsedTime*60;
 %     Normalize to Start of 14
     
-    traces = raw_data.AllTracesVector;
+    traces_raw = raw_data.AllTracesVector;
     filter = sum(raw_data.ncFilter(:,ismember([raw_data.ncFilterID],nuclear_cycles)),2)>0;
-    traces = traces(:,filter);
+    
+    traces = traces_raw(:,filter==1);
     no_cycle_start = ~isnan(max(max(traces(time < 2*60,:)))) || max(max(traces(time < 2*60,:))) > 0;
     time = time - time(raw_data.nc14);
     for i = 1:size(traces,2)
@@ -78,105 +101,14 @@ for k = 1:length(filenames)
         trace_struct(i_iter).set = filenames{k};
         trace_struct(i_iter).setID = k;
         trace_struct(i_iter).background = raw_data.MeanOffsetVector;
+        trace_struct(i_iter).background_error = raw_data.SDOffsetVector;
+        trace_struct(i_iter).background_time = time;
         trace_struct(i_iter).no_nc_start = no_cycle_start;
         i_iter = i_iter + 1;
     end
-end
-%% Interpolate Traces
-% Run data quality checks. Discard suspect dps. Will be replaced in interp step
-% Get 95th percentile for point-to-point deltas
-% diffs = abs(diff([trace_struct.fluo]));
-% ref_len = prctile(diffs(~isnan(diffs)),85);
-% adjustments = 0;
-% for i = 1:length(trace_struct)
-%     trace = trace_struct(i).fluo;
-%     trace(isnan(trace)) = 0;
-%     tr_d = [0 diff(trace)];
-%     tr_dd = [0 diff(diff(trace)) 0];
-%     rm_list = [];
-%     for j = 1:length(trace)
-%         % remove "large" drops to zero
-%         if abs(tr_d(j)) > ref_len && trace(j) == 0
-%             rm_list = [rm_list j];
-%             adjustments = adjustments +1;
-%         % remove "large" transient spikes
-%         elseif abs(tr_dd) > 1.5*ref_len
-%             rm_list = [rm_list j];
-%             adjustments = adjustments +1;
-%         end
+%     if k == 2
+%         break
 %     end
-%     trace_struct(i).fluo = trace(~ismember(1:length(trace), rm_list));
-%     trace_struct(i).time = trace_struct(i).time(~ismember(1:length(trace),rm_list));
-% end
-       
-% Interpolate to Achieve Desired Memory
-% Define Desired res and associated param
-empirical_res = [];
-for t = 1:length(trace_struct)
-    empirical_res = [empirical_res diff([trace_struct(t).time])];
-end
-% p5 = prctile(emprical_res,5);
-empirical_res = empirical_res(~isnan(empirical_res));
-p95 = prctile(empirical_res,95);
-empirical_res = empirical_res(empirical_res < p95);
-mean_empirical_res = mean(empirical_res);    
-T_elong = 160;
-mem = round(T_elong/mean_empirical_res);
-Tres = T_elong / mem;
-
-
-%Set minimum trace length (in time steps)
-min_len = 0;
-i_pass = 1;
-% define time grid. All traces will be shifted to conform to same 
-% Assume that anything starting <5 min is not taken from a set with
-% no nc14 normaliz
-t_start = Inf;
-for i = 1:length(trace_struct)
-    if trace_struct(i).no_nc_start ~= 1
-        t_start  = min(t_start,floor(min(trace_struct(i).time)));
-    end
-end
-
-t_stop = floor(max([trace_struct.time]));
-time_grid = t_start + Tres*(0:floor(t_stop/Tres));
-interp_struct = struct;
-for i = 1:length(trace_struct)
-    fluo = trace_struct(i).fluo;
-    time = trace_struct(i).time;
-    
-    time_interp = time_grid(time_grid >= min(time));
-    time_interp = time_interp(time_interp <= max(time));
-    fluo_interp = interp1(time,fluo,time_interp);
-    if length(time_interp) > min_len
-        interp_struct(i_pass).fluo = fluo_interp;
-        interp_struct(i_pass).time = time_interp;
-        interp_struct(i_pass).fluo_orig = fluo;
-        interp_struct(i_pass).time_orig = time;
-        interp_struct(i_pass).AP = trace_struct(i).AP;
-        interp_struct(i_pass).set = trace_struct(i).set;
-        interp_struct(i_pass).setID = trace_struct(i).setID;
-        interp_struct(i_pass).N = length(fluo_interp);
-        interp_struct(i_pass).dT = Tres;
-        interp_struct(i_pass).T_elong = T_elong;
-        interp_struct(i_pass).w = mem;
-        interp_struct(i_pass).alpha = (60/204)*mem;
-        i_pass = i_pass + 1;
-    end
-end
-%%
-for i = 1:length(interp_struct)
-    hold off
-   
-    plot(interp_struct(i).time_orig, interp_struct(i).fluo_orig, 'Linewidth',1.5)
-     hold on
-%     t_fig = figure('Visible','off');
-    plot(interp_struct(i).time, interp_struct(i).fluo,'-o', 'Linewidth',1.5)
-    title(['Trace ' num2str(i)])
-    grid on
-    pause(1.5)
-    
-%     saveas(t_fig, [outpath,'/traces/', 'trace_' num2str(i) '.png'],'png');
 end
 %% Histogram of Data Points by AP
 
@@ -197,64 +129,69 @@ subplot(2,1,1);
 colormap('jet');
 cm = colormap;
 
+% Unique AP values present in Data
 ap_vec = unique([trace_struct.AP]);
-ap_ct_vec = zeros(1,length(ap_vec));
+%Store Trace and Data Point Counts By AP and Dataset
+ap_ds_dp_mat = zeros(n_sets,length(ap_vec));
 for a = 1:length(ap_vec)
     ap = ap_vec(a);
-    ap_ct_vec(a) = sum(length([trace_struct([trace_struct.AP] == ap).fluo]));
+    for d = 1:n_sets
+        ap_ds_dp_mat(d,a) = sum(length([trace_struct(1==([trace_struct.AP] == ap).*([trace_struct.setID] == d)).fluo]));        
+    end
 end
-bar(ap_vec, ap_ct_vec , 'Facecolor',cm(5,:),...
+ap_ct_dp_vec = sum(ap_ds_dp_mat);
+
+bar(ap_vec, ap_ct_dp_vec , 'Facecolor',cm(5,:),...
     'EdgeColor','black','FaceAlpha',.65,'BarWidth', 1);
 title('Data Points by AP Region');
 xlabel('AP Region (%)');
-
+grid on
 subplot(2,1,2);
 histogram([trace_struct.AP],'Facecolor',cm(5,:));
 title('Traces by AP Region');
 xlabel('AP Region (%)');
-
+grid on
 saveas(figure(1), [outpath, 'data_histograms.png'],'png');
 
-%% Run Quality Checks by data set and AP
-ap_vec = unique([trace_struct.AP]);
-% Determine appropriate AP grouping
-if min(ap_ct_vec) >= min_stat
-    ap_grp_vec = ap_vec;
-else
-    for i = 2:length(ap_vec)
-        dupe_flag = 0;
-        ap_grp_ind = floor(ap_vec / i);
-        ap_grps = unique(ap_grp_ind);
-        for g = ap_grps
-            ct = ap_ct_vec(ap_grp_ind==g);
-            if ct < min_stat
-                dupe_flag = dupe_flag + 1;
-                break
-            end
-        end
-        if dupe_flag == 0
-            grp = i;
-            break
-        end
-    end
-end
-        
-ap_names = {};
-for ap_grp = ap_grps
-    ap_names = {ap_names{:} [num2str(min(ap_vec(ap_grp_ind==ap_grp))) '-' num2str(max(ap_vec(ap_grp_ind==ap_grp)))]};
-end  
-    
-n_grps = length(ap_grps);
-
-increment = floor(60 / (n_grps *n_sets));
-granularity = 100;
-max_fluo = ceil(max([trace_struct.fluo])/granularity)*granularity;
-FluoBins = 1:20:max_fluo;
-
+%%%Break out counts by Dataset
 figure(2);
-for i = 1:n_grps
-    ap_struct = trace_struct(ismember([trace_struct.AP],ap_vec(ap_grp_ind==ap_grps(i))));
-    for j = 1:n_sets
+increment = floor(60 / n_sets);
+% Array to store color mappings
+set_colors = zeros(n_sets, 3);
+hold on 
+%Data Points
+for i = 1:n_sets
+    set_colors(i,:) = cm(1+(i-1)*increment,:);
+    plot(ap_vec, ap_ds_dp_mat(i,:), '-o', 'Color',set_colors(i,:) ,'Linewidth', 1.5)
+end
+grid on
+title('Data Points by AP Region and Set');
+xlabel('AP Position (%)');
+ylabel('# Points');
+legend(set_titles{:});
+hold off
+saveas(figure(2), [outpath, 'data_count_plots.png'],'png');
+
+
+%% Multi Hist Plots
+% Determine appropriate AP grouping
+n_grps = length(ap_grp_indices);
+
+increment = floor(60 / n_sets);
+%Set size of fluo bins
+granularity = 20;
+max_fluo = ceil(max([trace_struct.fluo])/granularity)*granularity;
+FluoBins = 1:granularity:max_fluo;
+if exist([outpath 'fluo_his_plots/']) ~= 7
+    mkdir([outpath 'fluo_his_plots/'])
+end
+fluo_his_fig = figure('Position',[0 0 1024 1024]);
+% Struct to store hist infor for subsequent use
+hist_info = struct;
+
+for j = 1:n_sets
+    for i = 1:n_grps
+        ap_struct = trace_struct(ismember([trace_struct.AP],ap_grp_indices{i}));
         f_list = [];
         for a = 1:length(ap_struct)
             if strcmp(ap_struct(a).set,sets{j})
@@ -267,24 +204,165 @@ for i = 1:n_grps
         end
         ap_ct = histc(f_list, FluoBins);        
         subplot(n_sets,n_grps, (j-1)*n_grps + i)
-        bar(FluoBins, ap_ct / max(ap_ct), 'FaceColor',cm(increment*((j-1)*n_grps + i),:),...
-            'EdgeColor',cm(increment*((j-1)*n_grps + i),:));
+        b = bar(FluoBins, ap_ct / max(ap_ct), 'FaceColor',set_colors(j,:),...
+            'EdgeColor',set_colors(j,:),'BarWidth', 1);
         set(gca,'fontsize',4)
-        set_start = strfind(sets{j},'_');
-        set_start = set_start(end) + 1;
-        set_end = strfind(sets{j},'\Comp') - 1;
-        set_num = sets{j}(set_start:set_end);
-        title(['Fluo, Set: '  num2str(set_num) ' AP: ' ap_names{i}]); %' Set:' sets{j}])
-        axis([0,max_fluo,0 ,1])
+        title(['Fluo, Set: ' set_titles{j} ' Region: ' ap_grp_names{i}]); %' Set:' sets{j}])
+        axis([0,max_fluo,0 ,1])    
+        grid on
+        if i == 2;
+            hist_info(j).hist_ct = ap_ct;
+        end
+    end
+end
+saveas(fluo_his_fig, [outpath, '_fluo_his.png'],'png');
+hold off
+%% Fig to Compare Embryo Orientation and Frame Position to Basic Trace Statistics
+if exist([outpath, 'Orientation'])~= 7
+    mkdir([outpath, 'Orientation']);
+end
+%Get full distribution across all sets
+eve2_fluo_list = [];
+for i = 1:length(trace_struct);
+    if ismember(trace_struct(i).AP, 39:43)
+        eve2_fluo_list = [eve2_fluo_list trace_struct(i).fluo];
+    end
+end
+        
+for i = 1:n_sets
+    image_fig = figure('Position', [0 0 1024 1024], 'Visible', 'off');
+    subplot(2,2,1);
+    imshow(ap_info_struct(i).MidPath)
+    title(['Mid Saginal Alignment: Set ' set_titles{i}]);
+    set(gca,'fontsize',6)
+    
+    subplot(2,2,3);
+    imshow(ap_info_struct(i).SurfPath)
+    title(['Surface Alignment: Set ' set_titles{i}]);
+    set(gca,'fontsize',6)
+    
+    subplot(2,2,2);
+    hold on
+    full_dist = histc(eve2_fluo_list, FluoBins);
+    bar(FluoBins, full_dist / sum(full_dist), 'FaceColor','black',...
+            'EdgeColor','black', 'FaceAlpha', 0.5,'BarWidth', 1);
+    set(gca,'fontsize',6)
+    ap_ct = hist_info(i).hist_ct;
+    bar(FluoBins, ap_ct / sum(ap_ct), 'FaceColor',set_colors(i,:),...
+            'EdgeColor',set_colors(i,:),'FaceAlpha', 0.5, 'BarWidth', 1);
+    set(gca,'fontsize',6)
+%     title(['Fluo, Set: ' set_titles{j} ' Region: ' ap_grp_names{i}]); %' Set:' sets{j}])
+    axis([0,max_fluo,0, max([full_dist / sum(full_dist) ap_ct / sum(ap_ct)])])  
+    grid on
+    title(['Fluorescent Intensities in Eve Stripe 2: Set ' set_titles{i}]);
+    
+    subplot(2,2,4);
+    hold on
+    all = area(ap_vec, sum(ap_ds_dp_mat,1)/sum(sum(ap_ds_dp_mat)));
+    set(all,'FaceAlpha',0.5,'FaceColor','black');
+    s = area(ap_vec, ap_ds_dp_mat(i,:)/sum(sum(ap_ds_dp_mat)));
+    set(s,'FaceAlpha',0.5,'FaceColor',set_colors(i,:));
+    grid on
+    title(['Data Points by AP Position: Set ' set_titles{i}]);
+    set(gca,'fontsize',10)
+    saveas(image_fig, [outpath, 'Orientation/' 'orient_check_set_' num2str(include_vec(i)) '.png'],'png');
+    hold off
+end
+
+%%
+for i = 1:n_sets
+    
+    mid_fig = figure;
+    imshow(ap_info_struct(i).MidPath)
+    title(['Mid Saginal Alignment: Set ' set_titles{i}]);
+    set(gca,'fontsize',10)
+    saveas(mid_fig, [outpath, 'Orientation/' 'MidSag' num2str(include_vec(i)) '.png'],'png');
+    
+    surf_fig = figure;
+    imshow(ap_info_struct(i).SurfPath)
+    title(['Surface Alignment: Set ' set_titles{i}]);
+    set(gca,'fontsize',10)
+    saveas(surf_fig, [outpath, 'Orientation/' 'Surf_' num2str(include_vec(i)) '.png'],'png');
+    
+    f_fig = figure('Visible', 'off');
+    hold on
+    full_dist = histc(eve2_fluo_list, FluoBins);
+    bar(FluoBins, full_dist / sum(full_dist), 'FaceColor','black',...
+            'EdgeColor','black', 'FaceAlpha', 0.5,'BarWidth', 1);
+    set(gca,'fontsize',10)
+    ap_ct = hist_info(i).hist_ct;
+    bar(FluoBins, ap_ct / sum(ap_ct), 'FaceColor',set_colors(i,:),...
+            'EdgeColor',set_colors(i,:),'FaceAlpha', 0.5, 'BarWidth', 1);
+    set(gca,'fontsize',10)
+%     title(['Fluo, Set: ' set_titles{j} ' Region: ' ap_grp_names{i}]); %' Set:' sets{j}])
+    axis([0,max_fluo,0, max([full_dist / sum(full_dist) ap_ct / sum(ap_ct)])])  
+    grid on
+    title(['Fluorescent Intensities in Eve Stripe 2: Set ' set_titles{i}]);
+    saveas(f_fig, [outpath, 'Orientation/' 'Fluo Dist_' num2str(include_vec(i)) '.png'],'png');
+    hold off
+    
+    ap_fig = figure;
+    hold on
+    all = area(ap_vec, sum(ap_ds_dp_mat)/sum(sum(ap_ds_dp_mat)));
+    set(all,'FaceAlpha',0.5,'FaceColor','black');
+    s = area(ap_vec, ap_ds_dp_mat(i,:)/sum(sum(ap_ds_dp_mat)));
+    set(s,'FaceAlpha',0.5,'FaceColor',set_colors(i,:));
+    grid on
+    title(['Data Points by AP Position: Set ' set_titles{i}]);
+    set(gca,'fontsize',10)
+    saveas(ap_fig, [outpath, 'Orientation/' 'AP Points_' num2str(include_vec(i)) '.png'],'png');
+end
+
+%% Multi HeatMap Plots
+% Determine appropriate AP grouping
+           
+heat_fig = figure('Position',[0 0 2048 1024]);
+for i = 1:n_grps
+    ap_struct = trace_struct(ismember([trace_struct.AP],ap_grp_indices{i}));
+    for j = 1:n_sets
+        f_list = [];
+        for a = 1:length(ap_struct)
+            if strcmp(ap_struct(a).set,sets{j})
+                fluo = ap_struct(a).fluo;
+                f_list = [f_list fluo(fluo>0)];
+            end
+        end
+        if isempty(f_list)
+            continue
+        end
+        ap_ct = repmat(repelem(histc(f_list, FluoBins),granularity),1,1);        
+        subplot(n_sets,n_grps, (j-1)*n_grps + i)
+        sub_scheme = cm;
+        colormap(sub_scheme);
+       imagesc(ap_ct);
+%         colorbar
+        set(gca,'YTick',[])
+        
+        set(gca,'fontsize',6)
+%         xlabel('Fluorescence (AU)')
+        title(['Fluo, Set: '  set_titles{j} ' '  ap_grp_names{i}]); %' Set:' sets{j}])
+%         axis([0,max_fluo,0 ,1])
     end
 end
 hold off
-saveas(figure(2), [outpath, 'fluo_his.png'],'png');
+saveas(heat_fig, [outpath, 'fluo_heat.png'],'png');
+%% Fluo Background Trends
+offset_fig = figure;
+hold on
+for i = 1:n_sets
+    set_traces = trace_struct([trace_struct.setID]==i);
+    plot(set_traces(1).background_time,set_traces(1).background, 'Color', set_colors(i,:),'Linewidth',1.5);
+end
+grid on
+title ('Mean Offset Value over Time');
+xlabel('Seconds (Relative to start of nc14)');
+ylabel('AU (?)');
+legend(set_titles{:});
+saveas(offset_fig, [outpath, 'fluo_offset.png'],'png');
 %% Cumulative Fluorescence within Eve Stripe 2 Region
 %Make Strings for legen entries
-ap_range = 39:45;
+ap_range = ap_grp_indices{2};
 figure(3)
-increment = floor(60 / n_sets);
 ptile_list = zeros(1,n_sets);
 % Set scale for x axis. Max of selected percentile across sets will be used
 ptile = 97;
@@ -301,7 +379,7 @@ for j = 1:n_sets
         continue
     end
     ap_ct = histc(f_list, FluoBins);
-    plot(FluoBins, cumsum(ap_ct) / sum(ap_ct), 'Color',cm(increment*j,:),'LineWidth', 2);
+    plot(FluoBins, cumsum(ap_ct) / sum(ap_ct), 'Color',set_colors(j,:),'LineWidth', 2);
     
 end 
 title(['Cumulative PDF (AP: ' num2str(min(ap_range)) '-' num2str(max(ap_range)) ')']); 
@@ -316,17 +394,16 @@ saveas(figure(3), [outpath, 'cum_his.png'],'png');
 med_fig = figure('Position',[0 0 1024 512]);
 
 medians = nan(n_sets,length(ap_vec));
-nTile25 = nan(n_sets,length(ap_vec));
-nTile75 = nan(n_sets,length(ap_vec));
+nTile40 = nan(n_sets,length(ap_vec));
+nTile60 = nan(n_sets,length(ap_vec));
 % hold on
 for j = 1:n_sets
     for k = 1:length(ap_vec)
         f_list = [];
-        ap_grp = ap_vec(max(1,k-1):min(length(ap_vec),k+1));
+        ap_grp = ap_vec(k);
         ap_struct = trace_struct(ismember([trace_struct.AP],ap_grp));
         for a = 1:length(ap_struct)
             if strcmp(ap_struct(a).set,sets{j})
-                
                 f_list = [f_list ap_struct(a).fluo];
             end
         end
@@ -336,47 +413,42 @@ for j = 1:n_sets
         f_list = f_list(f_list > 0);
 %         f_list = f_list(f_list < 1500);
         medians(j,k) = median(f_list);
-        nTile25(j,k) = prctile(f_list,25);
-        nTile75(j,k) = prctile(f_list,75);
+        nTile40(j,k) = prctile(f_list,40);
+        nTile60(j,k) = prctile(f_list,60);
     end 
 end
 
 hold on
-
 for i = 1:n_sets
-    p25_vec = nTile25(i,:); 
-    p75_vec = nTile75(i,:); 
-    p=[p25_vec(~isnan(p25_vec)),fliplr(p75_vec(~isnan(p25_vec)))];  
-    x = [ap_vec(~isnan(p25_vec)) fliplr(ap_vec(~isnan(p25_vec)))];         
-    h = fill(x,p,cm(increment*i,:),'Linewidth',1,'Edgecolor',cm(increment*i,:));  
-    set(h,'facealpha',.05)
-    set(h,'edgealpha',.3)
-end
-for i = 1:n_sets
-    plot(ap_vec,medians(i,:), 'Color', cm(increment*i,:),'Linewidth',2)
+    plot(ap_vec,medians(i,:), 'Color', set_colors(i,:),'Linewidth',2)
     legend(set_titles{:}, 'Location','southeast')
 end
 title('Median Fluorescent Intensities by AP Position and Data Set')
 xlabel('AP Position (%)')
 ylabel('AU');
+
+for i = 1:n_sets
+    p40_vec = nTile40(i,:); 
+%     p40_vec = p40_vec(~isnan(p40_vec));
+    p60_vec = nTile60(i,:);
+%     p60_vec = p60_vec(~isnan(p60_vec));
+%     x_vec = ap_vec(~isnan(p40_vec));         
+    for j = 1:length(ap_vec)
+        plot([ap_vec(j),ap_vec(j)], [p40_vec(j), p60_vec(j)], 'Color', cm(increment*(i-1)+1,:),'Linewidth',1)
+    end
+end
+
 grid on
 hold off
 saveas(med_fig, [outpath, 'median_fluo_plots.png'],'png');
 
 %% Mean Fluo By Region and Set
-flank_anterior = 33:38;
-flank_posterior = 46:51;
-stripe2 = 39:45;
-grp_names = {'Anterior Flank', 'Eve2 Stripe', 'Posterior Flank'};
-grp_indices = {flank_anterior, stripe2, flank_posterior};
-increment = floor(60 /n_sets);
-tr_gross = 0;
 
-for k = 1:length(grp_indices)
+for k = 1:length(ap_grp_indices)
     legend_names = {};
     fig =  figure('Position',[0 0 1024 512]);
     hold on
-    ap_grp = grp_indices{k};
+    ap_grp = ap_grp_indices{k};
     ap_struct = trace_struct(ismember([trace_struct.AP],ap_grp));
      
     for j = 1:n_sets
@@ -398,15 +470,15 @@ for k = 1:length(grp_indices)
         for t = 1:length(unique_times)
             f_series(t) = mean(fluo_values(times == unique_times(t)));
         end
-        plot(unique_times, f_series, 'Color', cm(j*increment,:),'Linewidth',2);
+        plot(unique_times, f_series, 'Color', set_colors(j,:),'Linewidth',2);
     end
-    title(['Mean Fluorescence by Data Set: ' grp_names{k}]) %' (AP: ' num2str(ap_grp) ')'])
+    title(['Mean Fluorescence by Data Set: ' ap_grp_names{k}]) %' (AP: ' num2str(ap_grp) ')'])
     xlabel('seconds');
     ylabel('AU');
     
     grid on;
     legend(legend_names{:}, 'Location','southwest')
-    saveas(fig, [outpath, 'mean_temp_fluo_' grp_names{k} '.png'],'png');
+    saveas(fig, [outpath, 'mean_temp_fluo_' ap_grp_names{k} '.png'],'png');
     
 end
 
