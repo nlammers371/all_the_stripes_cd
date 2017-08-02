@@ -1,14 +1,14 @@
 %------------------------Import Compiled Particles------------------------%
 %Set path to folder containing relevant projects
-folder_path = 'C:\Users\Nicholas\Dropbox (Garcia Lab)\eve2_orig\';
+folder_path = 'C:\Users\Nicholas\Dropbox (Garcia Lab)\mHMM\orig\';
 % folder_path = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\DropboxSingleTraces\Eve2_ML';
-project = 'mHMMeve2_orig_final_2017_07_14';
+project = 'mHMMeve2_orig_inf_set';
 % outName = 'eve2Sets_2017_06_15_ml.mat'
 outpath = [folder_path '/projects/' project '/' ];
 % Keyword to ensure only sets from current project are pulled
 keyword = '20sec';
 %vector of data set numbers to include
-include_vec = [7,9,10,11,12,13,15,19,20];
+include_vec = [9,10,19,20,21,22,23,24,26];
 % exclude_vec = [12:20 5];
 % exclude_vec(exclude_vec == 7) = 3;
 
@@ -17,7 +17,7 @@ nuclear_cycles = [14];
 % Minimumt number of data points per summary stat
 min_stat = 500;
 %Define Relevant Grouping Regions
-ap_grp_indices = {33:38,39:43,43:48};
+ap_grp_indices = {33:37,38:42,43:48};
 ap_grp_names = {'Anterior Flank', 'Eve Stripe 2','Posterior Flank'};
  
 if exist(outpath) ~= 7
@@ -174,7 +174,7 @@ saveas(figure(2), [outpath, 'data_count_plots.png'],'png');
 
 
 %% Multi Hist Plots
-% Determine appropriate AP grouping
+close all
 n_grps = length(ap_grp_indices);
 
 increment = floor(60 / n_sets);
@@ -218,13 +218,14 @@ end
 saveas(fluo_his_fig, [outpath, '_fluo_his.png'],'png');
 hold off
 %% Fig to Compare Embryo Orientation and Frame Position to Basic Trace Statistics
+close all
 if exist([outpath, 'Orientation'])~= 7
     mkdir([outpath, 'Orientation']);
 end
 %Get full distribution across all sets
 eve2_fluo_list = [];
 for i = 1:length(trace_struct);
-    if ismember(trace_struct(i).AP, 39:43)
+    if ismember(trace_struct(i).AP, 38:42)
         eve2_fluo_list = [eve2_fluo_list trace_struct(i).fluo];
     end
 end
@@ -269,49 +270,49 @@ for i = 1:n_sets
     hold off
 end
 
-%%
-for i = 1:n_sets
-    
-    mid_fig = figure;
-    imshow(ap_info_struct(i).MidPath)
-    title(['Mid Saginal Alignment: Set ' set_titles{i}]);
-    set(gca,'fontsize',10)
-    saveas(mid_fig, [outpath, 'Orientation/' 'MidSag' num2str(include_vec(i)) '.png'],'png');
-    
-    surf_fig = figure;
-    imshow(ap_info_struct(i).SurfPath)
-    title(['Surface Alignment: Set ' set_titles{i}]);
-    set(gca,'fontsize',10)
-    saveas(surf_fig, [outpath, 'Orientation/' 'Surf_' num2str(include_vec(i)) '.png'],'png');
-    
-    f_fig = figure('Visible', 'off');
-    hold on
-    full_dist = histc(eve2_fluo_list, FluoBins);
-    bar(FluoBins, full_dist / sum(full_dist), 'FaceColor','black',...
-            'EdgeColor','black', 'FaceAlpha', 0.5,'BarWidth', 1);
-    set(gca,'fontsize',10)
-    ap_ct = hist_info(i).hist_ct;
-    bar(FluoBins, ap_ct / sum(ap_ct), 'FaceColor',set_colors(i,:),...
-            'EdgeColor',set_colors(i,:),'FaceAlpha', 0.5, 'BarWidth', 1);
-    set(gca,'fontsize',10)
-%     title(['Fluo, Set: ' set_titles{j} ' Region: ' ap_grp_names{i}]); %' Set:' sets{j}])
-    axis([0,max_fluo,0, max([full_dist / sum(full_dist) ap_ct / sum(ap_ct)])])  
-    grid on
-    title(['Fluorescent Intensities in Eve Stripe 2: Set ' set_titles{i}]);
-    saveas(f_fig, [outpath, 'Orientation/' 'Fluo Dist_' num2str(include_vec(i)) '.png'],'png');
-    hold off
-    
-    ap_fig = figure;
-    hold on
-    all = area(ap_vec, sum(ap_ds_dp_mat)/sum(sum(ap_ds_dp_mat)));
-    set(all,'FaceAlpha',0.5,'FaceColor','black');
-    s = area(ap_vec, ap_ds_dp_mat(i,:)/sum(sum(ap_ds_dp_mat)));
-    set(s,'FaceAlpha',0.5,'FaceColor',set_colors(i,:));
-    grid on
-    title(['Data Points by AP Position: Set ' set_titles{i}]);
-    set(gca,'fontsize',10)
-    saveas(ap_fig, [outpath, 'Orientation/' 'AP Points_' num2str(include_vec(i)) '.png'],'png');
-end
+
+% for i = 1:n_sets
+%     
+%     mid_fig = figure;
+%     imshow(ap_info_struct(i).MidPath)
+%     title(['Mid Saginal Alignment: Set ' set_titles{i}]);
+%     set(gca,'fontsize',10)
+%     saveas(mid_fig, [outpath, 'Orientation/' 'MidSag' num2str(include_vec(i)) '.png'],'png');
+%     
+%     surf_fig = figure;
+%     imshow(ap_info_struct(i).SurfPath)
+%     title(['Surface Alignment: Set ' set_titles{i}]);
+%     set(gca,'fontsize',10)
+%     saveas(surf_fig, [outpath, 'Orientation/' 'Surf_' num2str(include_vec(i)) '.png'],'png');
+%     
+%     f_fig = figure('Visible', 'off');
+%     hold on
+%     full_dist = histc(eve2_fluo_list, FluoBins);
+%     bar(FluoBins, full_dist / sum(full_dist), 'FaceColor','black',...
+%             'EdgeColor','black', 'FaceAlpha', 0.5,'BarWidth', 1);
+%     set(gca,'fontsize',10)
+%     ap_ct = hist_info(i).hist_ct;
+%     bar(FluoBins, ap_ct / sum(ap_ct), 'FaceColor',set_colors(i,:),...
+%             'EdgeColor',set_colors(i,:),'FaceAlpha', 0.5, 'BarWidth', 1);
+%     set(gca,'fontsize',10)
+% %     title(['Fluo, Set: ' set_titles{j} ' Region: ' ap_grp_names{i}]); %' Set:' sets{j}])
+%     axis([0,max_fluo,0, max([full_dist / sum(full_dist) ap_ct / sum(ap_ct)])])  
+%     grid on
+%     title(['Fluorescent Intensities in Eve Stripe 2: Set ' set_titles{i}]);
+%     saveas(f_fig, [outpath, 'Orientation/' 'Fluo Dist_' num2str(include_vec(i)) '.png'],'png');
+%     hold off
+%     
+%     ap_fig = figure;
+%     hold on
+%     all = area(ap_vec, sum(ap_ds_dp_mat)/sum(sum(ap_ds_dp_mat)));
+%     set(all,'FaceAlpha',0.5,'FaceColor','black');
+%     s = area(ap_vec, ap_ds_dp_mat(i,:)/sum(sum(ap_ds_dp_mat)));
+%     set(s,'FaceAlpha',0.5,'FaceColor',set_colors(i,:));
+%     grid on
+%     title(['Data Points by AP Position: Set ' set_titles{i}]);
+%     set(gca,'fontsize',10)
+%     saveas(ap_fig, [outpath, 'Orientation/' 'AP Points_' num2str(include_vec(i)) '.png'],'png');
+% end
 
 %% Multi HeatMap Plots
 % Determine appropriate AP grouping
@@ -346,7 +347,9 @@ for i = 1:n_grps
 end
 hold off
 saveas(heat_fig, [outpath, 'fluo_heat.png'],'png');
+
 %% Fluo Background Trends
+close all
 offset_fig = figure;
 hold on
 for i = 1:n_sets
@@ -360,6 +363,7 @@ ylabel('AU (?)');
 legend(set_titles{:});
 saveas(offset_fig, [outpath, 'fluo_offset.png'],'png');
 %% Cumulative Fluorescence within Eve Stripe 2 Region
+close all
 %Make Strings for legen entries
 ap_range = ap_grp_indices{2};
 figure(3)
@@ -385,12 +389,12 @@ end
 title(['Cumulative PDF (AP: ' num2str(min(ap_range)) '-' num2str(max(ap_range)) ')']); 
 axis([0,max(ptile_list),0,1])
 grid on
+xlabel('AU')
 legend(set_titles{:}, 'Location','southeast')
 hold off
 saveas(figure(3), [outpath, 'cum_his.png'],'png');
 
 %% Plot Fluo Percentiles By AP and Data Set
-
 med_fig = figure('Position',[0 0 1024 512]);
 
 medians = nan(n_sets,length(ap_vec));
@@ -443,7 +447,7 @@ hold off
 saveas(med_fig, [outpath, 'median_fluo_plots.png'],'png');
 
 %% Mean Fluo By Region and Set
-
+close all
 for k = 1:length(ap_grp_indices)
     legend_names = {};
     fig =  figure('Position',[0 0 1024 512]);
