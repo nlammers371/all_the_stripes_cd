@@ -1,23 +1,30 @@
 %------------------------Import Compiled Particles------------------------%
 %Set path to folder containing relevant projects
-folder_path = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\DropboxSingleTraces\';
-sub_paths = {'Eve2_ML/', 'Eve2_orig/'};
+folder_path = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\Eve7Stripes\';
+sub_paths = {'weka\', 'orig\'};
 key_names = {'ML', 'ORIG'};
 prefix = 'eve2_20sec_';
-project = 'mHMMeve2_ml_comparisons';
-outpath = ['../projects/' project '/' ];
+project = 'BACeve_ml_orig_compare';
+outpath = [folder_path '/figures/' project '/' ];
 % Keyword to ensure only sets from current project are pulled
 if exist(outpath) ~= 7
     mkdir(outpath);
 end
+if exist([outpath 'traces']) ~= 7
+    mkdir([outpath 'traces']);
+end
+%-------------Designate Which Data Set to Use for Comparison--------------%
+% set_num = 9;
+position = '150_umP_';
+date_str = '2017-05-14-';
+suffix = '_eve_5uW';
+fName = [data_str position suffix];
 %% Load Compiled Particles and Spot Mats
 particles = struct;
-set_num = 7;
-date_str = '2017-05-30-';
 for i = 1:length(sub_paths)
     sp = sub_paths{i};
     kn = key_names{i};
-    raw_particles = load([folder_path sp date_str prefix num2str(set_num) '/' 'CompiledParticles.mat']);
+    raw_particles = load([folder_path sp fName '/' 'CompiledParticles.mat']);
     particles.(key_names{i}) = raw_particles.CompiledParticles;
     raw_spots = load([folder_path sp date_str prefix num2str(set_num) '/' 'Spots.mat']);
     spots.(key_names{i}) = raw_spots.Spots;
@@ -26,7 +33,8 @@ end
 t_pass = 1;
 O_particles = particles.ORIG;
 orig_nc = [O_particles.Nucleus];
-for j = 1:length(ml_traces)
+% ml_traces = particles.ML.fluo;
+for j = 1:length(particles.ML)
     nucleus = particles.ML(j).Nucleus;
     if sum(orig_nc == nucleus) == 1
         t_pass = t_pass + 1; 
@@ -43,9 +51,7 @@ for j = 1:length(ml_traces)
         if length(of) < 15 || length(mf) <15
             continue
         end
-        if set == 7
-            break
-        end
+        
         t_fig = figure('Visible','off','Position',[0 0 1024 512]);
         subplot(1,2,1)
         plot(ot, of,'-o', 'Linewidth',1.5)
@@ -103,11 +109,29 @@ for h = 1:length(key_names)
 end
 save([outpath,'/', 'set_' num2str(set_num) '_spot_info.mat'],'sm_struct')
 %%
-seven_ML = sm_struct(1).spot_stats_ML;
-seven_ORIG = sm_struct(1).spot_stats_ORIG;
+% vector of unique ap positions
+ap_vec = unique(floor([[particles.ORIG.APpos] [particles.ML.APpos]]));
+ap_counts = zeros(2,length(ap_vec));
+for j = 1:length(key_names)
+    kn = key_names{j};
+    for i = 1:length(particles.(kn))
+        ap = floor(mean(particles.(kn)(i).APpos));
+        ap_counts(i,ap_vec==ap) = ap_counts(1,ap_vec==ap) + length(particles.(kn)(i).fluo);
+    end
+end
 
-particle_ORIG = 63;
-particle_ML = 63;
+hist_fig = figure;
+hold on
 
-ML_p_stats = seven_ML([sm_struct.spot_stats_ML.ParticleID]==particle_ML);
-ORIG_p_stats = seven_ORIG([seven_ORIG.ParticleID]==particle_ORIG);
+colormap('jet');
+cm = colormap;
+
+bar(ap_vec, ap_counts(1,:), 'Facecolor',cm(5,:),...
+    'EdgeColor','black','FaceAlpha',.5,'BarWidth', 1);
+bar(ap_vec, ap_counts(2,:), 'Facecolor',cm(25,:),...
+    'EdgeColor','black','FaceAlpha',.5,'BarWidth', 1);
+legend('Original Pipeline', 'Weka');
+
+title('Data Points by AP Region');
+xlabel('AP Region (%)');
+saveas(hist_fig, [outpath,'/', 'set_' num2str(set_num) '_spot_info.png'],'png')
