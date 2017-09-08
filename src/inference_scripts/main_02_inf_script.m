@@ -1,6 +1,6 @@
 %Get environment variable from job script
 % stripe_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
-stripe_groups = {1};
+stripe_groups = {2};
 stripe_regions = [0];
 %only do stripe centers for now
 w = 8;
