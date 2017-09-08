@@ -25,7 +25,7 @@ start_time = 0;
 stop_time = 60;
 % generate save names
 dataname = ['inference_traces_w' num2str(w) '_' project '.mat'];
-date_str = '2017-09-07_test';
+date_str = '2017-09-08_test';
 out_dir =  ['../../out/' project '/' date_str '/' 'inference_w' ...
     num2str(w)  '/'];
 
