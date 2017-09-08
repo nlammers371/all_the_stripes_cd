@@ -21,8 +21,9 @@
 #SBATCH --ntasks-per-node=24
 #
 # Wall clock limit:
-#SBATCH --time=00:10:00
+#SBATCH --time=72:00:00
 #
+#SBATCH -a 1-2
 ## Command(s) to run:
 module load matlab/R2015a
 # Make a temporary scratch directory for storing job
@@ -30,4 +31,4 @@ module load matlab/R2015a
 # This directory can then be referenced by assigning it to
 # a 'parcluster.JobStorageLocation' property in your script.
 mkdir -p /global/scratch/$USER/$SLURM_JOB_ID
-matlab -nodisplay -nosplash -nodesktop < inf_multi_ap.m
+matlab -nodisplay -nodesktop < main_02_inf_script.m
