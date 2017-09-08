@@ -1,10 +1,10 @@
 %Get environment variable from job script
 % stripe_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
-stripe_groups = {2};
+stripe_groups = {1,2};
 stripe_regions = [0];
 %only do stripe centers for now
 w = 8;
-state_vec = [3];
+state_vec = [2];
 %route to utilities folder
 addpath('../utilities');
 %------------------Define Inference Variables------------------------------%

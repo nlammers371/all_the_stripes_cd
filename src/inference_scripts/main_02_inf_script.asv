@@ -1,10 +1,10 @@
 %Get environment variable from job script
-bin_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
-% bin_groups = {0}
+% stripe_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
+stripe_groups = {1,2};
 stripe_regions = [0];
 %only do stripe centers for now
 w = 8;
-state_vec = [3,2];
+state_vec = [2];
 %route to utilities folder
 addpath('../utilities');
 %------------------Define Inference Variables------------------------------%
@@ -25,7 +25,7 @@ start_time = 0;
 stop_time = 60;
 % generate save names
 dataname = ['inference_traces_w' num2str(w) '_' project '.mat'];
-date_str = '2017-09-07_test';
+date_str = '2017-09-08_test';
 out_dir =  ['../../out/' project '/' date_str '/' 'inference_w' ...
     num2str(w)  '/'];
 
@@ -54,14 +54,14 @@ alpha = interp_struct(1).alpha;
 deltaT = interp_struct(1).dT;
 
 % create position index
-binIndex = unique([interp_struct.binID]);
-binCounts = zeros(1,length(binIndex)); 
+stripeIndex = unique([interp_struct.stripe_id]);
+stripeCounts = zeros(1,length(stripeIndex)); 
 iter = 1;
-for bin = binIndex
-    binCounts(iter) = sum([interp_struct([interp_struct.binID]==bin).N]);
+for stripe = stripeIndex
+    stripeCounts(iter) = sum([interp_struct([interp_struct.stripe_id]==stripe).N]);
     iter = iter + 1;
 end
-%%
+
 % initialize parpool
 % pool = parpool(pool_max);
 % structure array to store the analysis data
@@ -73,19 +73,19 @@ init_meta = struct;
 %for each bin. Keeping the structure as it shouldn't slow things down all
 %that much and could be useful in the future
 for K = state_vec
-    for g = 1:length(bin_groups)
+    for g = 1:length(stripe_groups)
         for b = 1:n_bootstrap
             s = (g-1)*n_bootstrap + b;
             local_struct = struct;
             init_struct = struct;
-            bin_list = bin_groups{g};
-            mean_bin = mean(bin_list);
+            stripe_list = stripe_groups{g};
+            mean_bin = mean(stripe_list);
             % initialize logL to - infinity
             logL_max = -Inf;
 
             % extract fluo_data
-            trace_ind = find(ismember([interp_struct.stripe_sub_id],stripe_regions)...
-                .*ismember([interp_struct.stripe_id],bin_list));
+            trace_ind = find(ismember([interp_struct.stripe_sub_id],stripe_regions(1))...
+                .*ismember([interp_struct.stripe_id],stripe_list));
             if bootstrap    
                 set_size = sum([interp_struct(trace_ind).N]);
                 ndp = 0;    
@@ -185,7 +185,7 @@ for K = state_vec
             outputs(s).deltaT = deltaT;
             output = outputs(s);
             
-            fName_sub = ['eveSet_w' num2str(w) '_K' num2str(K) '_' date_str '_bin' num2str(bin_list(1)) '_' num2str(bin_list(end)) '_group' num2str(b)];    
+            fName_sub = ['eveSet_w' num2str(w) '_K' num2str(K) '_' date_str '_bin' num2str(stripe_list(1)) '_' num2str(stripe_list(end)) '_group' num2str(b)];    
             suffix = 1;
             out_file = [out_dir_single '/' fName_sub   '_results_' num2str(suffix) '.mat'];
             while exist(out_file) == 2
@@ -195,7 +195,7 @@ for K = state_vec
             save(out_file, 'output');
         end           
     end
-    fName = ['eveSet_w' num2str(w) '_K' num2str(K) '_' date_str '_bin' num2str(bin_list(1)) '_' num2str(bin_list(end))];    
+    fName = ['eveSet_w' num2str(w) '_K' num2str(K) '_' date_str '_bin' num2str(stripe_list(1)) '_' num2str(stripe_list(end))];    
     suffix = 1;
     out_file = [out_dir '/' fName   '_results_' num2str(suffix) '.mat'];
     while exist(out_file) == 2
@@ -204,4 +204,4 @@ for K = state_vec
     end
     save(out_file, 'outputs');
 end
-delete(pool)
+% delete(pool)
