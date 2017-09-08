@@ -4,7 +4,7 @@ stripe_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
 stripe_regions = [0];
 %only do stripe centers for now
 w = 8;
-state_vec = [2];
+state_vec = [3];
 %route to utilities folder
 addpath('../utilities');
 %------------------Define Inference Variables------------------------------%
