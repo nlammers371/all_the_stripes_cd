@@ -224,7 +224,7 @@ if exist([outpath, 'Orientation'])~= 7
 end
 %Get full distribution across all sets
 eve2_fluo_list = [];
-for i = 1:length(trace_struct);
+for i = 1:length(trace_struct)
     if ismember(trace_struct(i).AP, 38:42)
         eve2_fluo_list = [eve2_fluo_list trace_struct(i).fluo];
     end
