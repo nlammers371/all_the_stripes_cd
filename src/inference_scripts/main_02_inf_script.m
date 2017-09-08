@@ -204,4 +204,4 @@ for K = state_vec
     end
     save(out_file, 'outputs');
 end
-delete(pool)
+% delete(pool)
