@@ -1,5 +1,5 @@
 function viterbi_out = viterbi (fluo_values, v, noise, pi0_log, ...
-                                     A_log, K, w, alpha)
+                                     A_log, K, w, alpha_var)
 
     % Given a time series of fluorescence values and the inferred model
     % parameters, returns the most likely path.
@@ -23,9 +23,9 @@ function viterbi_out = viterbi (fluo_values, v, noise, pi0_log, ...
     
     % length of the fluorescence series
     seq_length = length(fluo_values);
-    
+
     % fraction of the full MS2 sequence transcribed at each elongation step
-    ms2_coeff = ms2_loading_coeff(alpha,w);
+    ms2_coeff = ms2_loading_coeff(alpha_var,w);
     
     % ----------------------------- Lists ------------------------------
     
@@ -91,11 +91,12 @@ function viterbi_out = viterbi (fluo_values, v, noise, pi0_log, ...
     
     % --------------------- Log of emission terms ---------------------
     difference_list = zeros(K^w, seq_length);
+    
     for i = 1:n_unique
         states = naive_count_map{i};
         difference_list(states, :) = ...
-            repmat(difference(fluo_log, fluo_sign, seq_length, K, w, ...
-            states(1), v_logs, v_signs, naive_count_list_MS2_log)', [length(states), 1]);
+            repmat(difference(fluo_log, fluo_sign, seq_length, K, w, alpha_var, ...
+            states(1), v_logs', v_signs', naive_count_list_MS2_log)', [length(states), 1]);        
     end
     eta_log = 0.5*(lambda_log - log(2*pi)) ...
         -0.5*exp(lambda_log + difference_list);

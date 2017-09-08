@@ -1,6 +1,7 @@
+
 function gillespie = synthetic_rate_gillespie_two(seq_length, alpha, ...
                                 K, w, R, deltaT, r_emission, noise, pi0, ...
-                                fluo_per_rna, wait_time, conv)
+                                fluo_per_rna, flor, conv)
 
     % Generates a fluorescence sequence for the given model parameters
     % using the Gillespie algorithm.
@@ -63,6 +64,10 @@ function gillespie = synthetic_rate_gillespie_two(seq_length, alpha, ...
     % indexing variable to keep track of the current transition
     ind = 1;
     last = [0 0];
+    
+    % keeps track of how much more wait time is required before loading
+    dead = 0;
+    
     % generate a sequence of naive states using the Gillespie algorithm
     while (t < t_max)
         
@@ -81,15 +86,20 @@ function gillespie = synthetic_rate_gillespie_two(seq_length, alpha, ...
         fluo_cum(ind) = fluo_cum(ind - 1);
         
         for j = 1:2
-            avg_time = fluo_per_rna / r_emission(conv(naive_states(ind-1), j));
-            ddt = exprnd(avg_time);
+            if conv(naive_states(ind-1), j) == 0
+                continue;
+            end
+            avg_time = fluo_per_rna / r_emission(conv(naive_states(ind-1), j)) - flor;
+            ddt = exprnd(avg_time) + dead;
             while ddt < dt
+                dead = flor;
                 arrival_times = [arrival_times t - dt + ddt];
                 last(j) = t - dt + ddt;
-                next = exprnd(avg_time);
+                next = exprnd(avg_time) + dead;
                 ddt = ddt + next;
                 fluo_cum(ind) = fluo_cum(ind) + fluo_per_rna;
             end
+            dead = max(0, flor - (ddt - dt));
         end
     end
     
@@ -136,6 +146,7 @@ function gillespie = synthetic_rate_gillespie_two(seq_length, alpha, ...
     end
     
     % calculates fluorescense with MS2 for the original
+    approx_naive_states = [];
     for k = 1:seq_length
         t_end = times_unif(k);
         t_start = max([0, t_end - w*deltaT]);
@@ -160,6 +171,66 @@ function gillespie = synthetic_rate_gillespie_two(seq_length, alpha, ...
                           ms2_loading_coeff_integral(alpha, w, deltaT, t1, t2);
             
         end
+        
+        % finds what the "best fit" naive states are for every time point
+        ind_start_before = find(times <= (k-1)*deltaT);
+        i_start = ind_start_before(end);
+        
+        ind_end_before = find(times <= k*deltaT);
+        i_end = ind_end_before(end);
+        
+        times_window = times(i_start:(i_end+1));
+        naive_window = naive_states(i_start:(i_end + 1));
+        times_window(1) = (k-1)*deltaT;
+        times_window = [times_window(2:length(times_window)) k*deltaT] - times_window;
+        naive_weights = [0 0 0];
+        for i = 1:3
+            naive_weights(i) = sum(times_window(naive_window == i));
+        end
+        [~, idx] = max(naive_weights);
+        approx_naive_states(k) = idx;
+        
+    end
+    
+    % calculates mean and std poll II for each naive state
+    polls = cell([3,2]);
+    for i = 1:3
+        polls{i,1} = [];
+        polls{i, 2} = [];
+    end
+    times = [times t_max];
+    for i = 1:length(times) - 1
+        s = naive_states(i);
+        valid = arrival_times(arrival_times < times(i+1));
+        valid = valid(valid > times(i) - w*deltaT);
+        time_in = times(i+1) - times(i);
+        un_times = [0];
+        for v = valid
+            if v < times(i) && times(i+1) - v > deltaT * w
+                un_times = [un_times deltaT * w - (times(i) - v)];
+            elseif v > times(i)
+                un_times = [un_times v - times(i)];
+                if times(i + 1) - v > deltaT * w
+                    un_times = [un_times deltaT * w + v - times(i)];
+                end
+            end
+        end
+        un_times = sort(unique(un_times));
+        corr_times = un_times(2:length(un_times));
+        corr_times = [corr_times time_in];
+        polls{s,2} = [polls{s,2} corr_times - un_times];
+        tot = zeros(size(un_times));
+        for v = valid
+            if v >= times(i)
+                indices = find(un_times + .001 > v - times(i) & un_times + .001 < ...
+                    deltaT * w + v - times(i));
+                tot(indices) = tot(indices) + 1;
+            else
+                indices = find(un_times + .001 < deltaT * w + v - times(i));
+                tot(indices) = tot(indices) + 1;
+            end
+        end  
+        polls{s,1} = [polls{s,1} tot];
     end
 
     % Gaussian noise
@@ -168,10 +239,13 @@ function gillespie = synthetic_rate_gillespie_two(seq_length, alpha, ...
     % add a Gaussian noise
     fluo_noise = fluo + gauss_noise;
     fluo_MS2_noise = fluo_MS2 + gauss_noise;
+    fluo_MS2_noise(fluo_MS2_noise < 0) = 0;
     fluo_MS2_orig_noise = fluo_MS2_orig + gauss_noise;
+    fluo_MS2_orig_noise(fluo_MS2_orig_noise < 0) = 0;
     
     % the output structure
     gillespie = struct('fluo', fluo_noise, 'fluo_MS2', fluo_MS2_noise, ...
         'fluo_no_noise', fluo, 'fluo_MS2_no_noise', fluo_MS2, ...
         'transition_times', times, 'transition_count', transition_count, ...
-        'naive_states', naive_states, 'fluo_MS2_orig_noise', fluo_MS2_orig_noise);
+        'naive_states', approx_naive_states, 'fluo_MS2_orig_noise', fluo_MS2_orig_noise);
+    gillespie.poll_info = polls;

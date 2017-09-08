@@ -1,5 +1,5 @@
-function logL_tot = likelihood (fluo_values, v, noise, pi0_log, A_log, ...
-                                K, w, alpha)
+function logL_tot = likelihood_reduced_memory (fluo_values, v, noise, ...
+                         pi0_log, A_log, K, w, kappa)
 
     % Returns the log likelihood of observing fluorescence data (single or
     % multiple traces), given model parameters.
@@ -13,12 +13,12 @@ function logL_tot = likelihood (fluo_values, v, noise, pi0_log, A_log, ...
     % A_log: log of the initial transition probability matrix
     % K: number of naive states
     % w: memory
-    % alpha: length of the MS2 loop in time steps
+    % kappa: length of the MS2 loop in time steps
     %
     % OUTPUTS
     % logL_tot: log likelihood of observing the fluorescence data
     
-    % ---------------------- Variable assignments ----------------------
+    %%%%%%%%%%%%%%%%%%%%%%% Variable assignments %%%%%%%%%%%%%%%%%%%%%%%
     
     % number of traces
     n_traces = length(fluo_values);
@@ -39,8 +39,6 @@ function logL_tot = likelihood (fluo_values, v, noise, pi0_log, A_log, ...
         fluo_lengths{i_tr} = length(fluo_values{i_tr});
     end
     
-    % ----------------------------- Lists ------------------------------
-    
     % list of states that can transition to each of 1:K^w compounds states
     allowed_to_list = zeros(K^w, K, 'int16');
     
@@ -50,7 +48,8 @@ function logL_tot = likelihood (fluo_values, v, noise, pi0_log, A_log, ...
     % list of the number of each naive state encountered in compound states
     naive_count_list_MS2 = zeros(K^w, K);
     
-    ms2_coeff = ms2_loading_coeff(alpha,w);
+    % mean fractions of MS2 loops transcribed at each elongation step
+    ms2_coeff = ms2_loading_coeff(kappa,w);
     
     for i = 1:K^w
         allowed_to_list(i,:) = allowed_to(i, K, w);
@@ -60,7 +59,13 @@ function logL_tot = likelihood (fluo_values, v, noise, pi0_log, A_log, ...
         for k = 1:K
             naive_count_list_MS2(i,k) = sum(ms2_coeff(naive == k));
         end
-    end          
+    end
+    
+    % variable used to account for adjustements at time points 1:(w-1)
+    count_reduction = zeros([1,w-1]);
+    for t = 1:(w-1)
+        count_reduction(t) = sum(ms2_coeff((t+1):end));
+    end
     
     % log of the naive count list
     naive_count_list_MS2_log = log(naive_count_list_MS2);
@@ -84,35 +89,9 @@ function logL_tot = likelihood (fluo_values, v, noise, pi0_log, A_log, ...
     for t = 1:time_max
         possible_states_list{t} = possible_states (t, K, w);        
     end
-  
-    % ------------------------ Pre-allocations -------------------------
     
     % log likelihood of observing the fluorescence data
     logL_tot = 0;
-    
-    % pre-allocation of alpha and beta coefficient matrices
-    alpha_matrix_log = cell([n_traces, 1]);
-    for i_tr = 1:n_traces
-        alpha_matrix_log{i_tr} = zeros(K^w,fluo_lengths{i_tr});                
-    end    
-    
-    % --------------- lists used in the expectation step ---------------
-    
-    % list of log (X_t - V_t)^2 terms that appear in the emission pdf's
-    difference_list = cell([n_traces, 1]);
-    eta_log_list = cell([n_traces, 1]);
-    for i_tr = 1:n_traces
-        difference_list_temp = zeros(K^w, fluo_lengths{i_tr});
-        for i = 1:n_unique
-            states = naive_count_map{i};
-            difference_list_temp(states, :) = ...
-                repmat(difference(fluo_logs{i_tr}, fluo_signs{i_tr}, fluo_lengths{i_tr}, K, w, ...
-                alpha, states(1), v_logs, v_signs, naive_count_list_MS2_log)', [length(states), 1]);
-        end
-        difference_list{i_tr} = difference_list_temp;
-        eta_log_list{i_tr} = 0.5*(lambda_log - log(2*pi)) ...
-            -0.5*exp(lambda_log + difference_list{i_tr});
-    end
     
     % row and column subscripts used for indexing A_log elements for
     % alpha matrix calculation
@@ -121,19 +100,33 @@ function logL_tot = likelihood (fluo_values, v, noise, pi0_log, A_log, ...
     
     % A_log element indexing in a 2d slice used for alpha matrix
     % calculation
-    A_log_alpha_subs_1d = A_log(sub2ind([K, K], A_log_alpha_rowSubs, A_log_alpha_colSubs));
-    alpha_A_log_list = reshape(A_log_alpha_subs_1d, [K^w K]);    
+    A_log_alpha_subs_1d = A_log(sub2ind([K, K], A_log_alpha_rowSubs, ...
+                                A_log_alpha_colSubs));
+    alpha_A_log_list = reshape(A_log_alpha_subs_1d, [K^w K]);
     
-    % -------------- alpha coefficient matrix calculation --------------
-    
+    %%%%%%%%%%%%%%%%%%%%%% Likelihood calculation %%%%%%%%%%%%%%%%%%%%%%
     for i_tr = 1:n_traces
         
-        % initializes the alpha matrix as all zeros (logs all infinities)
-        alpha_matrix_log{i_tr}(:,:) = -Inf;
+        % pre-allocation of the alpha coefficient matrix
+        alpha_matrix_log = -Inf(K^w,fluo_lengths{i_tr});
+        
+        % list of log (X_t - V_t)^2 terms that appear in the emission pdf's
+        difference_list_temp = zeros(K^w, fluo_lengths{i_tr});
+        for i = 1:n_unique
+            states = naive_count_map{i};
+            difference_list_temp(states, :) = ...
+                   repmat(difference_reduced_memory(fluo_logs{i_tr}, ...
+                   fluo_signs{i_tr}, fluo_lengths{i_tr}, K, w, ...
+                   count_reduction, states(1), v_logs, v_signs, ...
+                   naive_count_list_MS2_log)', [length(states), 1]);
+        end
+        difference_list = difference_list_temp;
+        eta_log_list = 0.5*(lambda_log - log(2*pi)) ...
+            -0.5*exp(lambda_log + difference_list);
         
         % calculates the alpha matrix elements for t = 1
         for i = possible_states_list{1}
-            alpha_matrix_log{i_tr}(i, 1) = eta_log_list{i_tr}(i, 1) + ...
+            alpha_matrix_log(i, 1) = eta_log_list(i, 1) + ...
                 pi0_log(digit_first_list(i));
         end
         
@@ -145,7 +138,7 @@ function logL_tot = likelihood (fluo_values, v, noise, pi0_log, A_log, ...
             % list of terms that are added to find the alpha matrix
             % elements
             alpha_terms_list = alpha_A_log_list(i_possible, :) + ...
-                reshape(alpha_matrix_log{i_tr}(allowed_to_list(i_possible,:),t-1), [], K);
+                reshape(alpha_matrix_log(allowed_to_list(i_possible,:),t-1), [], K);
             
             % local execution of the vectorized log_sum_exp_positive
             alpha_terms_max = max(alpha_terms_list, [], 2);
@@ -153,13 +146,11 @@ function logL_tot = likelihood (fluo_values, v, noise, pi0_log, A_log, ...
             alpha_terms_diff_sum_exp_log = log(sum(exp(alpha_terms_diff), 2));
             
             % assignment of alpha matrix element values
-            alpha_matrix_log{i_tr}(i_possible,t) = alpha_terms_diff_sum_exp_log + ...
-                alpha_terms_max + eta_log_list{i_tr}(i_possible, t);
+            alpha_matrix_log(i_possible,t) = alpha_terms_diff_sum_exp_log + ...
+                alpha_terms_max + eta_log_list(i_possible, t);
         end
-    end
-    
-    % ----------------- log-likelihood calcuation ----------------------
-    for i_tr = 1:n_traces
+        
+        % log-likelihood calculation
         logL_tot = logL_tot + ...
-            log_sum_exp_positive(alpha_matrix_log{i_tr}(:,fluo_lengths{i_tr}));
+            log_sum_exp_positive(alpha_matrix_log(:,fluo_lengths{i_tr}));
     end
