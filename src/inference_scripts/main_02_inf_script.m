@@ -115,7 +115,7 @@ for K = state_vec
                                 param_init.noise, K, w, alpha, 1000, 1e-4);
             noise_iid = 1/sqrt(exp(local_iid_out.lambda_log));
             v_iid = exp(local_iid_out.v_logs);
-            for i_local = 1:n_localEM
+            parfor i_local = 1:n_localEM
                 % random initialization of model parameters
                 param_init = initialize_random_with_priors(K, noise_iid, v_iid);
 
