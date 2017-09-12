@@ -124,8 +124,7 @@ for K = state_vec
                 v_init = param_init.v;
                 noise_init = param_init.noise;
 
-                init_struct(i_local).A_init = exp(A_log_init);
-                init_struct(i_local).R_init = logm(A_log_init)/deltaT;
+                init_struct(i_local).A_init = exp(A_log_init);                
                 init_struct(i_local).v_init = v_init;
                 init_struct(i_local).noise_init = noise_init;
                 init_struct(i_local).set_id = s;
@@ -140,7 +139,7 @@ for K = state_vec
                 local_struct(i_local).logL = local_out.logL;
                 local_struct(i_local).A_log = local_out.A_log;
                 local_struct(i_local).A = exp(local_out.A_log);
-                local_struct(i_local).R = prob_to_rate(exp(local_out.A_log), deltaT);
+                local_struct(i_local).R = (eye(K) - exp(local_out.A_log)) / deltaT;
                 local_struct(i_local).v = exp(local_out.v_logs).*local_out.v_signs;
                 local_struct(i_local).r = exp(local_out.v_logs).*local_out.v_signs / deltaT;
                 lambda_inf = exp(local_out.lambda_log);
@@ -204,4 +203,3 @@ for K = state_vec
     end
     save(out_file, 'outputs');
 end
-% delete(pool)
