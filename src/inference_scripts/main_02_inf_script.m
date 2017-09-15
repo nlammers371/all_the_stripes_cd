@@ -1,10 +1,10 @@
 %Get environment variable from job script
-stripe_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
-% stripe_groups = {1,2};
+% stripe_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
+% stripe_groups = {4,5};
 stripe_regions = [0];
 %only do stripe centers for now
 w = 8;
-state_vec = [3];
+state_vec = [3,2];
 %route to utilities folder
 addpath('../utilities');
 %------------------Define Inference Variables------------------------------%
@@ -25,7 +25,7 @@ start_time = 0;
 stop_time = 60;
 % generate save names
 dataname = ['inference_traces_w' num2str(w) '_' project '.mat'];
-date_str = '2017-09-08_test';
+date_str = '2017-09-14';
 out_dir =  ['../../out/' project '/' date_str '/' 'inference_w' ...
     num2str(w)  '/'];
 
@@ -38,7 +38,7 @@ if exist(out_dir_single) ~= 7
 end
 % if 1 inference will be conducted on "n_bootstrap" sets
 bootstrap = 1;
-n_bootstrap = 5;
+n_bootstrap = 2;
 sample_size = 6000;
 % keep myself from doing stupid things....
 if bootstrap == 0 && n_bootstrap ~= 1
@@ -90,8 +90,10 @@ for K = state_vec
                 set_size = sum([interp_struct(trace_ind).N]);
                 ndp = 0;    
                 sample_ids = [];
+                %Reset bootstrap size to be on order of set size for small
+                %bins
                 if set_size < sample_size
-                    warning('Set size less than prescribed inference sample size')
+                    sample_size = ceil(set_size/1000)*1000;
                 end
                 while ndp < sample_size
                     tr_id = randsample(trace_ind,1);
