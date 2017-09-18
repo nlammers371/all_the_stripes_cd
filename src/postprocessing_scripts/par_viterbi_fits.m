@@ -4,7 +4,7 @@ addpath('../utilities/');
 %memory assumed for inference
 w = 8;
 %states used for final inference
-K = 2;
+K = 3;
 %set bin range
 stripe_range = [1:2];
 sub_stripe_range = [0];
@@ -42,7 +42,7 @@ for bin = stripe_range
     pi0_log = log(hmm_bin.pi0_mean);
     A_log = log(hmm_bin.A_mean);
     bin_traces = traces_all([traces_all.stripe_id]==bin);
-    bin_traces = traces_all([traces_all.stripe_sub_id]==0);
+    bin_traces = traces_all([bin_traces.stripe_sub_id]==0);
     viterbi_fits = struct;
     n_traces = length(bin_traces);
     n_jobs = ceil(n_traces/job_size);

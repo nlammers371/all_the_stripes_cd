@@ -8,7 +8,7 @@ Tres_out = 22.5;
 %memory
 w_out = round(T_elong/Tres_out);
 %Min dp per trace
-min_dp = w_out*2;
+min_dp = w_out*1.5;
 %Interp Res
 Tres_interp = T_elong/w_out;
 %Length of MS2 loops in time steps
@@ -78,13 +78,7 @@ for s = stripe_set
     stripe_struct = trace_struct([trace_struct.stripe_id]==s);
     index_vec = 1:length(stripe_struct);
     %set scale for cleaning
-    big_jump = prctile([stripe_struct.fluo],99);
-%     for i = 1:length(stripe_struct)
-%         trace = stripe_struct(i).fluo_full;    
-%         time = stripe_struct(i).time_full;
-%         stripe_struct(i).time_full = time(1==(time >= start_time*60).*(time < stop_time*60));
-%         stripe_struct(i).fluo_full = trace(1==(time >= start_time*60).*(time < stop_time*60));
-%     end    
+    big_jump = prctile([stripe_struct.fluo],99); 
     %Remove low quality traces
     field_names = fieldnames(stripe_struct);
     %Structure to store traces after first round of cleaning
@@ -140,30 +134,17 @@ for s = stripe_set
         trace_zeros = trace==0;
         trace_nz = find(trace);
         %Look for stretches of 2+ zeros to land if a trace is broken
-        trace_zeros = trace_zeros.*(0==[diff(trace_zeros) 0]);
+        trace_zeros = find(trace_zeros.*(0==[diff(trace_zeros) 0]));
         %Differentiate
         tr_d = diff(trace);    
         tr_dd = [0 diff(diff(trace)) 0]; 
         %Catch quick rises first 
         rise_points = find(([tr_d 0] > 8*big_jump/w_in).*(trace==0).*(trace_ind~=1));
         problems = [];
-        for r = 1:length(rise_points)
-            rp = rise_points(r);
-            %only respond to features preceded by 3 or more zeros 
-            prev_nz = max(trace_nz(trace_nz<rp));
-            if rp - prev_nz > floor(60/Tres_in)
-                problems = [problems rp];
-            end
-        end
+        problems = [problems rise_points];
         %same story for drops but looking ahead
         fall_points = find(([0 tr_d] < -8*big_jump/w_in).*(trace==0));    
-        for f = 1:length(fall_points)
-            fp = fall_points(f);
-            next_nz = min(trace_nz(trace_nz>fp));
-            if next_nz - fp > floor(60/Tres_in)
-                problems = [problems fp];
-            end
-        end
+        problems = [problems rise_points];
         problems = sort(problems);
         problems = [problems length(trace)];
         flags = flags + length(problems) -1;    
@@ -182,7 +163,7 @@ for s = stripe_set
             end
             %If we find another start point, make sure it is far removed from
             %problem area
-            s_options = trace_zeros(trace_zeros > problems(j) + 5);
+            s_options = trace_zeros(trace_zeros > problems(j));
             if isempty(s_options)
                 break
             end
@@ -225,9 +206,6 @@ for s = stripe_set
         if start_flag == 1
             trace = [0 0 trace];
             time = [time(1)-2*Tres_out time(1)-Tres_out time];
-%             ap = [-2*mean(diff(ap)) -mean(diff(ap)) ap];
-%             xp = [-2*mean(diff(xp)) -mean(diff(xp)) xp];
-%             yp = [-2*mean(diff(yp)) -mean(diff(xp)) yp];
             adjust_points = [0 1 adjust_points];
         end    
 
@@ -238,9 +216,6 @@ for s = stripe_set
 %         temp_struct.time_adjusted_fluo = time_f;
         temp_struct.time_adjusted = time;
         temp_struct.fluo_adjusted = trace;
-%         temp_struct.ap_vector = ap;
-%         temp_struct.xPos = xp;
-%         temp_struct.yPos = yp;
         
         stripe_struct_clean2 = [stripe_struct_clean2 temp_struct];
         adjust_flags = adjust_flags + sum(adjust_points==1);
@@ -250,7 +225,7 @@ for s = stripe_set
 
     for i = 1:length(stripe_struct_clean2)
         ff = stripe_struct_clean2(i).fluo;
-        if length(ff) < 2*w_in
+        if length(ff) <= min_dp
             rm_list = [rm_list i];
         end
     end
@@ -328,11 +303,14 @@ for i = 1:length(trace_struct_final)
     end
 end
 
-
+% define decision point = 50th prctile of nonzero pojnts
+f_int = [interp_struct_raw.fluo];
+f_int = f_int(f_int>0);
+midpoint = prctile(f_int,50);
 % check for infeasible spikes from zero level
 problems = 0;
 rejects = [];
-issues = [];
+problem_segments = [];
 interp_struct = [];
 for i = 1:length(interp_struct_raw)
     end_points = [];
@@ -342,10 +320,14 @@ for i = 1:length(interp_struct_raw)
     zs = find(fluo==0);
     s = 1;
     for j = 1:(length(zs)-1)        
+        %Find blips > 1 min and < twice memory (min ris/fall time)
         if zs(j+1) - zs(j) > floor(60/Tres_out) && zs(j+1) - zs(j) < 2*w_out
-            if sum(d_f(zs(j):zs(j+1)-1)) > 2*big_jump
+            % if a has a mean fluorescence greater than 50th percentile,
+            % include in list of problem sections
+            if mean(d_f(zs(j):zs(j+1)-1)) > midpoint
                 problems = problems + 1;
-                issues = [issues {fluo(zs(j):zs(j+1))}];
+                problem_segments = [problem_segments {fluo(zs(j):zs(j+1))}];
+                %set new end point befor issue and start point right after
                 end_points = [end_points zs(j)]; 
                 start_points = [start_points zs(j+1)];
             end
@@ -436,9 +418,7 @@ if print_traces
         title(['Original vs. Final: Trace ' num2str(i)])
         legend('Raw', 'Interpolated');
         xlabel('Minutes');
-        grid on
-        pause(1.5)
-
+        grid on        
         saveas(t_fig, [tracepath, 'trace_' num2str(i) '.png'],'png');
     end
 end

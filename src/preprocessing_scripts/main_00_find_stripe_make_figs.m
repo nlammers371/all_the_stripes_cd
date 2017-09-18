@@ -47,15 +47,15 @@ filenames = {};
 APnames = {};
 for i = 1:length(dir_struct)
     particle_struct = dir_struct(i).particles;
-    if length(particle_struct) > 1
+    if isempty(particle_struct)
+        continue    
+    elseif length(particle_struct) > 1
         warning(['Multiple Compile Particles Sets Detected for set '...
-            num2str(i)])
-    end
-    for j = 1:length(particle_struct)
-        filenames = [filenames {[folder_path dir_struct(i).folder ...
-            '\' particle_struct(j).name]}];
-        APnames = [APnames {[folder_path dir_struct(i).folder '\APDetection.mat']}];
-    end
+            num2str(i) ', taking first'])
+    end    
+    filenames = [filenames {[folder_path dir_struct(i).folder ...
+            '\' particle_struct(1).name]}];
+    APnames = [APnames {[folder_path dir_struct(i).folder '\APDetection.mat']}];    
 end
 
 n_sets = length(filenames);
@@ -162,20 +162,40 @@ for i = 1:length(filenames)
         end
     end
 end
-%--Use 1D Clustering to Find Stripe Centers (should be generalized to 2D)-%
+% Obtain Priors for stripe location using data distribution across sets
+
+colormap('jet');
+cm = colormap;
+increment = floor(size(cm,1)/7);
+
+agg_fluo_levels = sum(ap_fluo_levels);
+sigma = 50;
+sz = 100;    % length of gaussFilter vector
+x = linspace(-sz / 2, sz / 2, sz);
+gaussFilter = exp(-x .^ 2 / (2 * sigma ^ 2));
+gaussFilter = gaussFilter / sum (gaussFilter); % normalize
+agg_fluo_smooth = filter (gaussFilter,1, agg_fluo_levels);
+raw_stripe_fig = figure;
+hold on
+plot(ap_index,sum(ap_fluo_levels),'.')
+hold on
+plot(ap_index,agg_fluo_smooth,'LineWidth',2)
+grid on
+title('Aggregated Fluorescence by AP')
+saveas(raw_stripe_fig, [ap_pos_path '/raw_stripes.png'],'png')
+%Calling these by eye at the moment
+stripe_priors = [.32,.39,.47,.55,.63,.69,.75];
+%% Use 1D Clustering to Find Stripe Centers (should be generalized to 2D)-%
 cluster_path = [ap_pos_path '/stripe_fits/'];
 if exist(cluster_path) ~= 7
     mkdir(cluster_path);
 end
-%NL: I made these priors up. Should check/refine
-stripe_priors = [.32,.39,.48,.56,.62,.68,.74];
+
 s_ids = 1:7;
-%impose maximum stripe radius (width = 2*r)
-max_radius = .025;
+%Impose stripe width of 3 AP
+stripe_radius = .015;
 %Max iterations allowed
 max_iters = 1000;    
-%Percentile cutoff for stripe centers and flanks
-threshold = .68;
 %Set granularity for ap stripe plots
 ap_size = .001;
 %Store set titles
@@ -187,62 +207,73 @@ stripe_id_cell = cell(1,length(filenames));
 %Find stripe centers for each set
 for s = 1:length(filenames)
     ap_array = ap_fluo_levels(s,:);
+    %set negatives to 0
     ap_array(ap_array < 0) = 0;
+    %find location of first and last nonzero elements
     start = find(ap_array,1);
     stop = find(ap_array,1,'last');
     bounded_ap = ap_index(start:stop);
     ap_array = ap_array(start:stop);
     f_unit_counts = [];
+    %Break cumulative fluo up into units of 50000. Each such unit is one
+    %observation used for clustering (a way of coarse-grained, weighted
+    %clustering)
     for i = 1:length(ap_array)
-        f = ceil(ap_array(i)/10000);    
+        f = ceil(ap_array(i)/5e4);    
         f_unit_counts = [f_unit_counts repelem(bounded_ap(i),f)];   
     end
     %Cluster Data
     n_changes = 1;
     iter = 0;
     id_vec_old = zeros(1,length(f_unit_counts));
+    %Remove stripe center priors that are not present in set
     stripe_centers = bounded_ap(ismember(bounded_ap,stripe_priors));
+    %identify stripes that appear to be in set
     stripe_id_vec = s_ids(ismember(stripe_priors,stripe_centers));
     n_stripes = length(stripe_centers);
-
+    %perform clustering
     while n_changes > 0    
         id_vec = zeros(1,length(f_unit_counts));
+        %for each particle, find nearest center
         for p = 1:length(f_unit_counts)
             ap = f_unit_counts(p);
             [m ,id] = nanmin(abs(ap-stripe_centers));
             id_vec(p) = id;
         end
+        %check how many assignments changed
         n_changes = sum(id_vec~=id_vec_old);
         %Re-calculate centers
         stripe_centers_new = zeros(1,length(stripe_centers));
         for i = 1:length(stripe_centers)
             mean_p = nanmean(f_unit_counts(ismember(id_vec,i)));
             stripe_centers_new(i) = mean_p;
-        end
+        end        
+        iter = iter + 1;
+        id_vec_old = id_vec;
+        stripe_centers = stripe_centers_new;    
         if iter > max_iters
             warning('Maximum iterations exceeded');
             break
         end
-        iter = iter + 1;
-        id_vec_old = id_vec;
-        stripe_centers = stripe_centers_new;    
     end
     %convenience vector
     index_vec = 1:length(id_vec);
     stripe_vec = zeros(1,length(id_vec));
     stripe_vec_full = zeros(1,length(id_vec));
     stripe_boundaries = [];
+    %assign traces to stripe regions
     for i = 1:n_stripes
         sc = stripe_centers(i);
         distances = f_unit_counts(id_vec==i) - sc;
         neg_edge = min(distances);
         pos_edge = max(distances);
-        candidate_ids = index_vec(id_vec==i);
-        sr = min(prctile(abs(distances),threshold*100),max_radius);
-        stripe_ids = candidate_ids(abs(distances) <= sr);
+        candidate_ids = index_vec(id_vec==i);        
+        %ID AP positions that are in stripe center
+        stripe_ids = candidate_ids(abs(distances) <= stripe_radius);
         stripe_vec(stripe_ids) = i;     
+        %Allow radii of boundary regions to be flexible for time being
         stripe_vec_full(candidate_ids) = i;     
-        stripe_boundaries = [stripe_boundaries; sc + neg_edge sc-sr sc sc + sr sc+pos_edge];       
+        stripe_boundaries = [stripe_boundaries; sc+neg_edge sc-stripe_radius sc sc+stripe_radius sc+pos_edge];       
     end
     stripe_positions{s} = stripe_boundaries;
     stripe_id_cell{s} = stripe_id_vec;
@@ -258,17 +289,14 @@ for s = 1:length(filenames)
     set_subtitles = [set_subtitles {st_string}];
     %Plot Stripes
     stripe_fig = figure('Visible', 'off');
-    colormap('jet');
-    cm = colormap;
-    increment = floor(size(cm,1)/(n_stripes+1));
     ap_vec = round(min(f_unit_counts),3):ap_size:round(max(f_unit_counts),3);
     hold on
     for i = 1:n_stripes
         ap_vec_plot_full = histc(f_unit_counts(stripe_vec_full==i),ap_vec);        
-        bar(ap_vec,ap_vec_plot_full,'FaceColor',cm(1+(1+i-1)*increment,:),'FaceAlpha',.2)
+        bar(ap_vec,ap_vec_plot_full,'FaceColor',cm(1+(stripe_id_vec(i)-1)*increment,:),'FaceAlpha',.2)
         
         ap_vec_plot = histc(f_unit_counts(stripe_vec==i),ap_vec);        
-        bar(ap_vec,ap_vec_plot,'FaceColor',cm(1+(1+i-1)*increment,:),'FaceAlpha',.7)
+        bar(ap_vec,ap_vec_plot,'FaceColor',cm(1+(stripe_id_vec(i)-1)*increment,:),'FaceAlpha',.7)
     end
     grid on
     title(['Inferred Stripe Positions, ' t_string ' (Set ' num2str(s) ')']);
@@ -279,20 +307,18 @@ for s = 1:length(filenames)
 end
 %%
 %------------------------Assign Stripe Identity---------------------------%
-
+%NL: 3 traces are being excluded for some reason. Need to fix this.
 for i = 1:length(trace_struct)
     setID = trace_struct(i).setID;
     s_boundaries = stripe_positions{setID};
     s_id_list = stripe_id_cell{setID};
     AP = trace_struct(i).MeanAP;
     trace_struct(i).stripe_id = NaN;
-    trace_struct(i).stripe_radius = NaN;
-    trace_struct(i).stripe_threshold = threshold;
+    trace_struct(i).stripe_radius = stripe_radius;   
     for j = 1:size(s_boundaries,1)
         sb = s_boundaries(j,:);
         if AP <= sb(5) && AP >= sb(1)
-            trace_struct(i).stripe_id = s_id_list(j);
-            trace_struct(i).stripe_radius = sb(2) - sb(1);
+            trace_struct(i).stripe_id = s_id_list(j);            
             trace_struct(i).stripe_sub_id = 0;
             if AP >= sb(4)
                 trace_struct(i).stripe_sub_id = 1;
@@ -302,6 +328,12 @@ for i = 1:length(trace_struct)
         end        
     end           
 end
+%Remove nans (temporary)
+trace_struct = trace_struct(~isnan([trace_struct.stripe_id]));
+if length(trace_struct(isnan([trace_struct.stripe_id]))) > 5
+    error('>5 nans in stripe assignment');
+end
+
 save([datapath 'raw_traces_' project '.mat'],'trace_struct') 
 
 %-------------Plot Mean and Cumulative Fluorescence by Set----------------%
@@ -349,7 +381,7 @@ for i = 1:length(coarse_ap)
    coarse_f_avg(:,i) = sum(ap_fluo_levels(:,coarse_ap_index==ap),2) ./ sum(ap_tp_counts(:,coarse_ap_index==ap),2);
    coarse_f_cum(:,i) = sum(ap_fluo_levels(:,coarse_ap_index==ap),2);
 end
-%%
+
 %-------------------------AP Averages-------------------------------------%
 mean_fluo_fig = figure('Position',[0 0 1024 1024]);
 % Struct to store hist infor for subsequent use
@@ -390,11 +422,12 @@ end
 saveas(cumulative_fluo_fig, [ap_pos_path, 'cumulative_fluo_ap.png'],'png');
 
 %--------------------------Multi Fluo Hist Plots--------------------------%
-%% Set size of fluo bins
+% Set size of fluo bins
 fluopath = [figpath '/fluo_statistics/'];
 if exist(fluopath) ~= 7
     mkdir(fluopath)
 end
+max_fluo = ceil(max([trace_struct.fluo])); 
 granularity = floor(max_fluo/200);
 %Get set of unique stripes in trace_struct
 stripe_set = unique([trace_struct.stripe_id]);
@@ -434,7 +467,7 @@ for s = 1:length(stripe_set)
     saveas(fluo_his_fig, [fluopath 'set_fluo_stripe_' num2str(stripe) '.png'],'png');
     hold off
 end
-%%
+
 %--------------------Cumulative Fluorescence------------------------------%
 %Make Strings for legen entries
 cf_fig = figure('Position',[0 0 1024 1024]);
