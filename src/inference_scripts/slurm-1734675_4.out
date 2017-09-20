@@ -87,3 +87,10 @@ connected to 12 workers.
 Starting parallel pool (parpool) using the 'local' profile ... IdleTimeout has been reached.
 Parallel pool using the 'local' profile is shutting down.
 connected to 12 workers.
+Starting parallel pool (parpool) using the 'local' profile ... IdleTimeout has been reached.
+Parallel pool using the 'local' profile is shutting down.
+connected to 12 workers.
+Starting parallel pool (parpool) using the 'local' profile ... IdleTimeout has been reached.
+Parallel pool using the 'local' profile is shutting down.
+connected to 12 workers.
+>> 
