@@ -4,11 +4,11 @@ addpath('../utilities/');
 %memory assumed for inference
 w = 8;
 %states used for final inference
-K = 2;
+K = 3;
 %set bin range
-bin_range = [1:2];
+bin_range = [1:6];
 datatype = 'weka';
-date_str = '2017-09-08_test';
+date_str = '2017-09-10_test';
 project = ['eve7stripes_inf'];
 interp_data_name = ['_w' num2str(w)];
 raw_data_name = [''];
