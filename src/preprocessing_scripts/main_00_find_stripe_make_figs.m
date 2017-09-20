@@ -4,7 +4,7 @@
 % folder_path = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve2spots\';
 folder_path = 'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\';
 %Assign Project Identifier
-project = 'eve7stripes_inf';
+project = 'eve7stripes_inf_2017_09_19';
 
 figpath = ['../../fig/' project '/'];
 datapath = ['../../dat/' project '/'];

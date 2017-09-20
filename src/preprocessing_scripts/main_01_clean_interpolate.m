@@ -18,7 +18,7 @@ start_time = 0;
 stop_time = 60;
 %------------------------Define Project Vars------------------------------%
 datatype = 'weka';
-project = ['eve7stripes_inf'];
+project = ['eve7stripes_inf_2017_09_19'];
 %Output PNG files for each trace?
 print_traces = 1;
 %---------------------------Set Paths-------------------------------------%
