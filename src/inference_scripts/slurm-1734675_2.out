@@ -12,3 +12,126 @@ For product information, visit www.mathworks.com.
 	Academic License
 
 >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> >> Starting parallel pool (parpool) using the 'local' profile ... connected to 12 workers.
+IdleTimeout has been reached.
+Parallel pool using the 'local' profile is shutting down.
+[Warning: The cluster failed to cancel the job execution. The error was: Unable
+to read file
+'/global/home/users/nlammers/.matlab/local_cluster_jobs/R2015a/Job124.in.mat'.
+No such file or directory.] 
+[> In parallel.internal.cluster.CJSJobMethods.cancelOneJob (line 53)
+  In parallel.job.CJSCommunicatingJob/cancelOneJob (line 99)
+  In %2465322437>@(j1)cancelOneJob(j1,cancelException)
+  In parallel.Job/cancel (line 1109)
+  In parallel.Cluster/hDeleteOneJob (line 830)
+  In parallel.internal.pool.InteractiveClient>iDeleteJobs (line 848)
+  In parallel.internal.pool.InteractiveClient/pStopLabsAndDisconnect (line 583)
+  In parallel.internal.pool.InteractiveClient/stopLabsAndDisconnect (line 434)
+  In parallel.Pool/delete (line 61)
+  In parallel.Pool/hDeleteLeaveHandleValid (line 388)
+  In parallel.internal.pool.PoolArrayManager>iManipulatePoolArray (line 124)
+  In parallel.internal.pool.PoolArrayManager.getOrAutoCreateWithCleanup (line 39)
+  In pctTryCreatePoolIfNecessary (line 23)
+  In distcomp.remoteparfor.tryRemoteParfor (line 27)
+  In parallel_function (line 433)] 
+Starting parallel pool (parpool) using the 'local' profile ... connected to 12 workers.
+IdleTimeout has been reached.
+Parallel pool using the 'local' profile is shutting down.
+[Warning: The cluster failed to cancel the job execution. The error was: Unable
+to read file
+'/global/home/users/nlammers/.matlab/local_cluster_jobs/R2015a/Job133.in.mat'.
+No such file or directory.] 
+[> In parallel.internal.cluster.CJSJobMethods.cancelOneJob (line 53)
+  In parallel.job.CJSCommunicatingJob/cancelOneJob (line 99)
+  In %2465322437>@(j1)cancelOneJob(j1,cancelException)
+  In parallel.Job/cancel (line 1109)
+  In parallel.Cluster/hDeleteOneJob (line 830)
+  In parallel.internal.pool.InteractiveClient>iDeleteJobs (line 848)
+  In parallel.internal.pool.InteractiveClient/pStopLabsAndDisconnect (line 583)
+  In parallel.internal.pool.InteractiveClient/stopLabsAndDisconnect (line 434)
+  In parallel.Pool/delete (line 61)
+  In parallel.Pool/hDeleteLeaveHandleValid (line 388)
+  In parallel.internal.pool.PoolArrayManager>iManipulatePoolArray (line 124)
+  In parallel.internal.pool.PoolArrayManager.getOrAutoCreateWithCleanup (line 39)
+  In pctTryCreatePoolIfNecessary (line 23)
+  In distcomp.remoteparfor.tryRemoteParfor (line 27)
+  In parallel_function (line 433)] 
+Starting parallel pool (parpool) using the 'local' profile ... connected to 12 workers.
+IdleTimeout has been reached.
+Parallel pool using the 'local' profile is shutting down.
+[Warning: The cluster failed to cancel the job execution. The error was: Unable
+to read file
+'/global/home/users/nlammers/.matlab/local_cluster_jobs/R2015a/Job141.in.mat'.
+No such file or directory.] 
+[> In parallel.internal.cluster.CJSJobMethods.cancelOneJob (line 53)
+  In parallel.job.CJSCommunicatingJob/cancelOneJob (line 99)
+  In %2465322437>@(j1)cancelOneJob(j1,cancelException)
+  In parallel.Job/cancel (line 1109)
+  In parallel.Cluster/hDeleteOneJob (line 830)
+  In parallel.internal.pool.InteractiveClient>iDeleteJobs (line 848)
+  In parallel.internal.pool.InteractiveClient/pStopLabsAndDisconnect (line 583)
+  In parallel.internal.pool.InteractiveClient/stopLabsAndDisconnect (line 434)
+  In parallel.Pool/delete (line 61)
+  In parallel.Pool/hDeleteLeaveHandleValid (line 388)
+  In parallel.internal.pool.PoolArrayManager>iManipulatePoolArray (line 124)
+  In parallel.internal.pool.PoolArrayManager.getOrAutoCreateWithCleanup (line 39)
+  In pctTryCreatePoolIfNecessary (line 23)
+  In distcomp.remoteparfor.tryRemoteParfor (line 27)
+  In parallel_function (line 433)] 
+Starting parallel pool (parpool) using the 'local' profile ... connected to 12 workers.
+Starting parallel pool (parpool) using the 'local' profile ... IdleTimeout has been reached.
+Parallel pool using the 'local' profile is shutting down.
+connected to 12 workers.
+Starting parallel pool (parpool) using the 'local' profile ... IdleTimeout has been reached.
+Parallel pool using the 'local' profile is shutting down.
+connected to 12 workers.
+IdleTimeout has been reached.
+Parallel pool using the 'local' profile is shutting down.
+[Warning: The cluster failed to cancel the job execution. The error was: Unable
+to read file
+'/global/home/users/nlammers/.matlab/local_cluster_jobs/R2015a/Job153.in.mat'.
+No such file or directory.] 
+[> In parallel.internal.cluster.CJSJobMethods.cancelOneJob (line 53)
+  In parallel.job.CJSCommunicatingJob/cancelOneJob (line 99)
+  In %2465322437>@(j1)cancelOneJob(j1,cancelException)
+  In parallel.Job/cancel (line 1109)
+  In parallel.Cluster/hDeleteOneJob (line 830)
+  In parallel.internal.pool.InteractiveClient>iDeleteJobs (line 848)
+  In parallel.internal.pool.InteractiveClient/pStopLabsAndDisconnect (line 583)
+  In parallel.internal.pool.InteractiveClient/stopLabsAndDisconnect (line 434)
+  In parallel.Pool/delete (line 61)
+  In parallel.Pool/hDeleteLeaveHandleValid (line 388)
+  In parallel.internal.pool.PoolArrayManager>iManipulatePoolArray (line 124)
+  In parallel.internal.pool.PoolArrayManager.getOrAutoCreateWithCleanup (line 39)
+  In pctTryCreatePoolIfNecessary (line 23)
+  In distcomp.remoteparfor.tryRemoteParfor (line 27)
+  In parallel_function (line 433)] 
+Starting parallel pool (parpool) using the 'local' profile ... connected to 12 workers.
+Starting parallel pool (parpool) using the 'local' profile ... IdleTimeout has been reached.
+Parallel pool using the 'local' profile is shutting down.
+connected to 12 workers.
+IdleTimeout has been reached.
+Parallel pool using the 'local' profile is shutting down.
+[Warning: The cluster failed to cancel the job execution. The error was: Unable
+to read file
+'/global/home/users/nlammers/.matlab/local_cluster_jobs/R2015a/Job162.in.mat'.
+No such file or directory.] 
+[> In parallel.internal.cluster.CJSJobMethods.cancelOneJob (line 53)
+  In parallel.job.CJSCommunicatingJob/cancelOneJob (line 99)
+  In %2465322437>@(j1)cancelOneJob(j1,cancelException)
+  In parallel.Job/cancel (line 1109)
+  In parallel.Cluster/hDeleteOneJob (line 830)
+  In parallel.internal.pool.InteractiveClient>iDeleteJobs (line 848)
+  In parallel.internal.pool.InteractiveClient/pStopLabsAndDisconnect (line 583)
+  In parallel.internal.pool.InteractiveClient/stopLabsAndDisconnect (line 434)
+  In parallel.Pool/delete (line 61)
+  In parallel.Pool/hDeleteLeaveHandleValid (line 388)
+  In parallel.internal.pool.PoolArrayManager>iManipulatePoolArray (line 124)
+  In parallel.internal.pool.PoolArrayManager.getOrAutoCreateWithCleanup (line 39)
+  In pctTryCreatePoolIfNecessary (line 23)
+  In distcomp.remoteparfor.tryRemoteParfor (line 27)
+  In parallel_function (line 433)] 
+Starting parallel pool (parpool) using the 'local' profile ... connected to 12 workers.
+Starting parallel pool (parpool) using the 'local' profile ... IdleTimeout has been reached.
+Parallel pool using the 'local' profile is shutting down.
+connected to 12 workers.
+>> 
