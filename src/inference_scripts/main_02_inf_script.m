@@ -1,6 +1,6 @@
 %Get environment variable from job script
-% stripe_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
-stripe_groups = {1,2,3,4,5,6,7};
+stripe_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
+% stripe_groups = {1,2,3,4,5,6,7};
 stripe_regions = [0];
 %only do stripe centers for now
 w = 7;
@@ -9,7 +9,7 @@ state_vec = [3];
 addpath('../utilities');
 %------------------Define Inference Variables------------------------------%
 % max num workers
-pool_max = 12;
+pool_max = 24;
 % set num local runs
 n_localEM = 25;
 %Time Resolution
@@ -71,7 +71,7 @@ pool = parpool(pool_max);
 outputs = struct;
 local_meta = struct;
 init_meta = struct;            
-%%
+
 %Note: This was designed to allow for an array of AP groups to be passed
 %in the same run request. On Savio it works better to create separate jobs
 %for each bin. Keeping the structure as it shouldn't slow things down all
@@ -190,7 +190,7 @@ for K = state_vec
             outputs(s).deltaT = deltaT;
             output = outputs(s);
             
-            fName_sub = ['eveSet_w' num2str(w) '_K' num2str(K) '_' date_str '_bin' num2str(stripe_list(1)) '_' num2str(stripe_list(end)) '_group' num2str(b)];    
+            fName_sub = ['eveSet_w' num2str(w) '_K' num2str(K) '_' date_str '_bin' num2str(stripe_list(1)) '_' num2str(stripe_list(end)) '_group1' num2str(b)];    
             suffix = 1;
             out_file = [out_dir_single '/' fName_sub   '_results_' num2str(suffix) '.mat'];
             while exist(out_file) == 2
