@@ -11,7 +11,7 @@ addpath('../utilities');
 % max num workers
 pool_max = 12;
 % set num local runs
-n_localEM = 25;
+n_localEM = 40;
 %Time Resolution
 Tres = 20;
 % set max steps per inference
