@@ -4,9 +4,9 @@
 % folder_path = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve2spots\';
 folder_path = 'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\';
 %Assign Project Identifier
-project = 'eve7stripes_inf_2017_09_19';
+project = 'eve7stripes_inf_2017_09_25';
 
-figpath = ['../../fig/' project '/'];
+figpath = ['../../fig/experimental_system/preprocessing/' project '/'];
 datapath = ['../../dat/' project '/'];
 if exist(datapath) ~= 7
     mkdir(datapath);
@@ -162,7 +162,7 @@ for i = 1:length(filenames)
         end
     end
 end
-% Obtain Priors for stripe location using data distribution across sets
+%% Obtain Priors for stripe location using data distribution across sets
 
 colormap('jet');
 cm = colormap;
@@ -182,9 +182,12 @@ hold on
 plot(ap_index,agg_fluo_smooth,'LineWidth',2)
 grid on
 title('Aggregated Fluorescence by AP')
+[stripe_priors, ~] = ginput;
 saveas(raw_stripe_fig, [ap_pos_path '/raw_stripes.png'],'png')
+close all
 %Calling these by eye at the moment
-stripe_priors = [.32,.39,.47,.55,.63,.69,.75];
+stripe_priors = stripe_priors';
+% stripe_priors = [.32,.39,.47,.55,.63,.69,.75];
 %% Use 1D Clustering to Find Stripe Centers (should be generalized to 2D)-%
 cluster_path = [ap_pos_path '/stripe_fits/'];
 if exist(cluster_path) ~= 7
@@ -204,6 +207,7 @@ set_subtitles = {};
 %indicates flank)
 stripe_positions = cell(1,length(filenames));
 stripe_id_cell = cell(1,length(filenames)); 
+f_unit_cell = cell(1,length(filenames)); 
 %Find stripe centers for each set
 for s = 1:length(filenames)
     ap_array = ap_fluo_levels(s,:);
@@ -227,7 +231,8 @@ for s = 1:length(filenames)
     iter = 0;
     id_vec_old = zeros(1,length(f_unit_counts));
     %Remove stripe center priors that are not present in set
-    stripe_centers = bounded_ap(ismember(bounded_ap,stripe_priors));
+    stripe_centers = stripe_priors(1==((stripe_priors >= min(bounded_ap))...
+        .*(stripe_priors <= max(bounded_ap))));
     %identify stripes that appear to be in set
     stripe_id_vec = s_ids(ismember(stripe_priors,stripe_centers));
     n_stripes = length(stripe_centers);
@@ -277,6 +282,8 @@ for s = 1:length(filenames)
     end
     stripe_positions{s} = stripe_boundaries;
     stripe_id_cell{s} = stripe_id_vec;
+    f_unit_cell{s} = f_unit_counts;
+%     stripe_id_full_cell{s} = f_unit_counts;
     fn = filenames{s};
     tt_s_end = strfind(fn,'\Comp') - 1;
     tt_s_start = strfind(fn,'\2017') + 1;
@@ -291,23 +298,90 @@ for s = 1:length(filenames)
     stripe_fig = figure('Visible', 'off');
     ap_vec = round(min(f_unit_counts),3):ap_size:round(max(f_unit_counts),3);
     hold on
+    legend_string = {};
     for i = 1:n_stripes
         ap_vec_plot_full = histc(f_unit_counts(stripe_vec_full==i),ap_vec);        
-        bar(ap_vec,ap_vec_plot_full,'FaceColor',cm(1+(stripe_id_vec(i)-1)*increment,:),'FaceAlpha',.2)
-        
+        p = bar(ap_vec,ap_vec_plot_full,'FaceColor',cm(1+(stripe_id_vec(i)-1)*increment,:),'FaceAlpha',.2);
+        set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
+        legend_string = [legend_string {['Stripe ' num2str(stripe_id_vec(i))]}];
         ap_vec_plot = histc(f_unit_counts(stripe_vec==i),ap_vec);        
         bar(ap_vec,ap_vec_plot,'FaceColor',cm(1+(stripe_id_vec(i)-1)*increment,:),'FaceAlpha',.7)
     end
     grid on
+    legend(legend_string{:});
     title(['Inferred Stripe Positions, ' t_string ' (Set ' num2str(s) ')']);
     xlabel('AP Position (%)');
     ylabel('AU')
     saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) '.png'],'png')
     saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) '.eps'],'epsc')
+    saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) '.fig'],'fig')
+end
+%% Review Stripe Classifications
+i = 1;
+while i <= length(filenames)    
+    f = openfig([cluster_path 'stripe_positions_set_' num2str(i) '.fig'],'visible');
+    hold on
+    [x ~] = ginput;
+    %if no corrections, proceed. Else implement changes and re-display
+    close all
+    if ~isempty(x)
+        f_unit_vec = f_unit_cell{i};
+        new_stripe_id_vec = zeros(size(f_unit_vec));
+        new_stripe_id_vec_full = zeros(size(f_unit_vec));
+        new_stripe_ids = zeros(1,length(x));
+        s_boundaries = zeros(length(x),5);
+        s_boundaries(:,3) = x;
+        s_boundaries(:,2) = x - stripe_radius;
+        s_boundaries(:,4) = x + stripe_radius;
+        s_boundaries(1,1) = x(1) - 2*stripe_radius;
+        s_boundaries(end,end) = x(end) + 2*stripe_radius;
+        for j = 1:length(x)
+            new_center = x(j);
+            [~, stripe_num] = min(abs(stripe_priors - new_center));
+            new_stripe_ids(j) = stripe_num;
+            if j ~= length(x)
+                midpoint =x(j) + (x(j+1)-x(j))/2;
+                s_boundaries(j,5) = midpoint;
+                s_boundaries(j+1,1) = midpoint;
+            end
+            new_stripe_id_vec_full(1==((f_unit_vec < s_boundaries(j,end)).*...
+                (f_unit_vec >= s_boundaries(j,1)))) = stripe_num;
+            new_stripe_id_vec(1==((f_unit_vec < s_boundaries(j,4)).*...
+                (f_unit_vec >= s_boundaries(j,2)))) = stripe_num;
+        end
+        stripe_fig = figure;
+        %set x axis
+        ap_vec = round(min(f_unit_vec),3):ap_size:round(max(f_unit_vec),3);
+        hold on        
+        legend_string = {};
+        for k = new_stripe_ids
+            ap_vec_plot_full = histc(f_unit_vec(new_stripe_id_vec_full==k),ap_vec);        
+            p = bar(ap_vec,ap_vec_plot_full,'FaceColor',cm(1+(k-1)*increment,:),'FaceAlpha',.2);
+            set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
+            legend_string = [legend_string {['Stripe ' num2str(k)]}];
+            ap_vec_plot = histc(f_unit_vec(new_stripe_id_vec==k),ap_vec);        
+            bar(ap_vec,ap_vec_plot,'FaceColor',cm(1+(k-1)*increment,:),'FaceAlpha',.7)
+        end        
+        grid on
+        legend(legend_string{:});
+        title(['Inferred Stripe Positions (Corrected), ' t_string ' (Set ' num2str(i) ')']);
+        xlabel('AP Position (%)');
+        ylabel('AU')
+        [x2 ~] = ginput;
+        if isempty(x2)
+            stripe_positions{i} = s_boundaries;
+            stripe_id_cell{i} = new_stripe_ids;
+            saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(i) 'corrected.png'],'png')
+            saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(i) '_corrected.eps'],'epsc')
+            saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(i) '_corrected.fig'],'fig')           
+            i = i + 1;
+        end 
+    else        
+        i = i + 1;
+    end   
 end
 %%
 %------------------------Assign Stripe Identity---------------------------%
-%NL: 3 traces are being excluded for some reason. Need to fix this.
 for i = 1:length(trace_struct)
     setID = trace_struct(i).setID;
     s_boundaries = stripe_positions{setID};
@@ -383,7 +457,7 @@ for i = 1:length(coarse_ap)
 end
 
 %-------------------------AP Averages-------------------------------------%
-mean_fluo_fig = figure('Position',[0 0 1024 1024]);
+mean_fluo_fig = figure('Position',[0 0 1536 1536]);
 % Struct to store hist infor for subsequent use
 max_mean = max(max(coarse_f_avg));
 for j = 1:n_sets        
@@ -402,7 +476,7 @@ end
 saveas(mean_fluo_fig, [ap_pos_path, 'mean_fluo_ap.png'],'png');
 
 % Integrated Fluorescence With Stripe Centers
-cumulative_fluo_fig = figure('Position',[0 0 1024 1024]);
+cumulative_fluo_fig = figure('Position',[0 0 1536 1536]);
 max_cum = 1.1*max(max(coarse_f_cum));
 for j = 1:n_sets        
     subplot(xDim,yDim, j)
@@ -438,6 +512,9 @@ for s = 1:length(stripe_set)
     % Struct to store hist infor for subsequent use        
     stripe_struct = trace_struct([trace_struct.stripe_id]==stripe);
     s_sets = unique([stripe_struct.setID]);
+    stripe_titles = set_titles(s_sets);
+    stripe_subtitles = set_subtitles(s_sets);
+    stripe_colors = set_colors(s_sets,:);
     n_sets_f = length(s_sets);
     yDim_fluo = ceil(n_sets_f/xDim);
     max_fluo = ceil(max([stripe_struct.fluo]));    
@@ -456,11 +533,11 @@ for s = 1:length(stripe_set)
         end
         ap_ct = histc(f_list, FluoBins);        
         subplot(yDim_fluo,xDim, j)
-        b = bar(FluoBins, ap_ct / max(ap_ct), 'FaceColor',set_colors(j,:),...
-            'EdgeColor',set_colors(j,:),'BarWidth', 1);
+        b = bar(FluoBins, ap_ct / max(ap_ct), 'FaceColor',stripe_colors(j,:),...
+            'EdgeColor',stripe_colors(j,:),'BarWidth', 1);
         set(gca,'fontsize',4)
-        title(strvcat(['Fluo Distribution ,Stripe ' num2str(stripe) ' Set: ' set_titles{j}],...
-            set_subtitles{j})); 
+        title(strvcat(['Fluo Distribution ,Stripe ' num2str(stripe) ' Set: ' stripe_titles{j}],...
+            stripe_subtitles{j})); 
         axis([0,max_fluo,0 ,1])    
         grid on
     end

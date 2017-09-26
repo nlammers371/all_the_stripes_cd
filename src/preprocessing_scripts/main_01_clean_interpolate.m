@@ -1,24 +1,29 @@
 %---------------------Set Cleaning and Summary Parameters-----------------%
 %Which Nuclear Cycles do we wish to include?
 nuclear_cycles = [14];
-%Elongation time for gene of interest
-T_elong = 180;
-%Time Resolution
-Tres_out = 22.5;
-%memory
-w_out = round(T_elong/Tres_out);
+%Incoming Time Resolution
+Tres_in = 10.2;
+%memory (best guess at memory)
+w_in_appx = 14;
 %Min dp per trace
-min_dp = w_out*1.5;
+min_dp_in = w_in_appx*2;
+%outgoing mem
+w_out_appx = 7;
+%Min dp per trace
+min_dp_out = w_out_appx*2;
 %Interp Res
-Tres_interp = T_elong/w_out;
+Tres_interp = 20;
 %Length of MS2 loops in time steps
-alpha = w_out*1302/6444;
-
+alpha_rat = 1302/6444;
+%Designate sets to remove from final, cleaned set (due to QC issues)
+rm_names = {'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\2017-05-14-A150umP_eve_5uW\CompiledParticles_classifier_2017_05_14_A150umP_eve.mat',...
+            'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\2017-05-13-A200umP_eve_5uW\CompiledParticles_classifier_2017-05-14-A150umP_eve_5uW.mat'...
+           };
 start_time = 0;
 stop_time = 60;
 %------------------------Define Project Vars------------------------------%
 datatype = 'weka';
-project = ['eve7stripes_inf_2017_09_19'];
+project = ['eve7stripes_inf_2017_09_25'];
 %Output PNG files for each trace?
 print_traces = 1;
 %---------------------------Set Paths-------------------------------------%
@@ -26,9 +31,9 @@ inpath = ['../../dat/' project '/' 'raw_traces_' project '.mat'];
 outpath = ['../../dat/' project '/'];
 figpath = ['../../fig/' project '/'];
 
-dataname = ['inference_traces_w' num2str(w_out) '_' project '.mat'];
+dataname = ['inference_traces_t' num2str(Tres_interp) '_' project '.mat'];
 
-tracepath = [figpath '/traces_dT' num2str(Tres_out) '/'];
+tracepath = [figpath '/traces_dT' num2str(Tres_interp) '/'];
 if exist(figpath) ~= 7
     mkdir(figpath);
 end
@@ -39,6 +44,18 @@ end
 %----------------Load Traces and Perform First Pass QC--------------------%
 %Load raw traces (saved in struct titled "trace_struct")
 load(inpath);
+%remove flagged sets
+rm_list = [];
+for i = 1:length(trace_struct)
+    for j = 1:length(rm_names)
+        if strcmp(trace_struct(i).set,rm_names{j})
+            rm_list = [rm_list i];
+        end
+    end
+end
+index_vec = 1:length(trace_struct);
+trace_struct = trace_struct(~ismember(index_vec,rm_list));
+
 %Determine time resolution of raw data
 set_list = unique([trace_struct.setID]);
 d_times = [];
@@ -47,7 +64,7 @@ set_ids = [];
 d_fig = figure;
 hold on
 for i = 1:length(set_list)
-    subplot(3,4,i);    
+    subplot(4,4,i);    
     set_struct = trace_struct([trace_struct.setID]==set_list(i));
     dts = [];
     for t = 1:length(set_struct)
@@ -58,8 +75,7 @@ for i = 1:length(set_list)
     histogram(dts(dts<40),100)
     title(['Set ' num2str(set_list(i))])
 end
-Tres_in = median(d_times);    
-w_in = floor(T_elong / Tres_in );
+
 %%
 %Data quality checks. Discard suspect data points.
 %Currently adjusting for the following issues:
@@ -139,11 +155,11 @@ for s = stripe_set
         tr_d = diff(trace);    
         tr_dd = [0 diff(diff(trace)) 0]; 
         %Catch quick rises first 
-        rise_points = find(([tr_d 0] > 8*big_jump/w_in).*(trace==0).*(trace_ind~=1));
+        rise_points = find(([tr_d 0] > 8*big_jump/w_in_appx).*(trace==0).*(trace_ind~=1));
         problems = [];
         problems = [problems rise_points];
         %same story for drops but looking ahead
-        fall_points = find(([0 tr_d] < -8*big_jump/w_in).*(trace==0));    
+        fall_points = find(([0 tr_d] < -8*big_jump/w_in_appx).*(trace==0));    
         problems = [problems rise_points];
         problems = sort(problems);
         problems = [problems length(trace)];
@@ -195,17 +211,17 @@ for s = stripe_set
         tr_d = diff(trace);    
         tr_dd = abs([0 diff(diff(trace)) 0]);
         trace_ind = 1:length(trace);
-        rise_points = ([tr_d 0] > 4*big_jump/w_in).*(trace==0).*(trace_ind~=1);
-        fall_points = ([0 tr_d] < -4*big_jump/w_in).*(trace==0);
-        start_flag =  trace(1) > big_jump/w_in;    
+        rise_points = ([tr_d 0] > 4*big_jump/w_in_appx).*(trace==0).*(trace_ind~=1);
+        fall_points = ([0 tr_d] < -4*big_jump/w_in_appx).*(trace==0);
+        start_flag =  trace(1) > big_jump/w_in_appx;    
         %any large transient spike surrounded by nonzero values is being interpolated
-        spike_points = ([0 abs(tr_d) > big_jump/w_in]).*([abs(tr_d) 0] > big_jump/w_in).*(tr_dd > 4*2*big_jump/w_in);
+        spike_points = ([0 abs(tr_d) > big_jump/w_in_appx]).*([abs(tr_d) 0] > big_jump/w_in_appx).*(tr_dd > 4*2*big_jump/w_in_appx);
         adjust_points = rise_points + fall_points + spike_points;
                                 
         % if trace starts high, join leading zeros and interpolate
         if start_flag == 1
             trace = [0 0 trace];
-            time = [time(1)-2*Tres_out time(1)-Tres_out time];
+            time = [time(1)-2*Tres_interp time(1)-Tres_interp time];
             adjust_points = [0 1 adjust_points];
         end    
 
@@ -225,7 +241,7 @@ for s = stripe_set
 
     for i = 1:length(stripe_struct_clean2)
         ff = stripe_struct_clean2(i).fluo;
-        if length(ff) <= min_dp
+        if length(ff) <= min_dp_in
             rm_list = [rm_list i];
         end
     end
@@ -275,7 +291,7 @@ for i = 1:length(trace_struct_final)
     fluo_interp = fluo_interp(max(1,f_start-1):min(length(fluo_interp),f_stop+1));
     time_interp = time_interp(max(1,f_start-1):min(length(time_interp),f_stop+1));
     st_point = stop_time*60;
-    if length(fluo_interp) >= min_dp
+    if length(fluo_interp) >= min_dp_in
         interp_struct_raw(i_pass).fluo = fluo_interp(1:min(length(fluo_interp),st_point));
         interp_struct_raw(i_pass).time = time_interp(1:min(length(fluo_interp),st_point));
         interp_struct_raw(i_pass).fluo_orig = fluo_orig;
@@ -293,10 +309,9 @@ for i = 1:length(trace_struct_final)
             end
         end           
         interp_struct_raw(i_pass).N = length(fluo_interp);
-        interp_struct_raw(i_pass).dT = Tres_interp;
-        interp_struct_raw(i_pass).T_elong = T_elong;
-        interp_struct_raw(i_pass).w = w_out;
-        interp_struct_raw(i_pass).alpha = alpha;
+        interp_struct_raw(i_pass).dT = Tres_interp;        
+        interp_struct_raw(i_pass).w_cleaning = w_out_appx;
+        interp_struct_raw(i_pass).alpha_frac = alpha_rat;
         interp_struct_raw(i_pass).start_time = start_time;
         interp_struct_raw(i_pass).stop_time = stop_time;
         i_pass = i_pass + 1;
@@ -321,7 +336,7 @@ for i = 1:length(interp_struct_raw)
     s = 1;
     for j = 1:(length(zs)-1)        
         %Find blips > 1 min and < twice memory (min ris/fall time)
-        if zs(j+1) - zs(j) > floor(60/Tres_out) && zs(j+1) - zs(j) < 2*w_out
+        if zs(j+1) - zs(j) > floor(60/Tres_interp) && zs(j+1) - zs(j) < 2*w_out_appx
             % if a has a mean fluorescence greater than 50th percentile,
             % include in list of problem sections
             if mean(d_f(zs(j):zs(j+1)-1)) > midpoint
@@ -338,7 +353,7 @@ for i = 1:length(interp_struct_raw)
     % see what remains
     for ind = 1:length(start_points)  
         seg = fluo(start_points(ind):end_points(ind));
-        if length(seg) >= min_dp
+        if length(seg) >= min_dp_in
             temp = interp_struct_raw(i);
             temp.time = temp.time(start_points(ind):end_points(ind));
             temp.fluo = temp.fluo(start_points(ind):end_points(ind));
@@ -387,7 +402,7 @@ for i = 1:length(interp_struct)
     interp_struct(i).StripeSubIDLong = repelem(interp_struct(i).stripe_sub_id,length(new_y(start:stop)));
     interp_struct(i).SetIDLong = repelem(interp_struct(i).setID,length(new_y(start:stop)));
     
-    if length(interp_struct) < min_dp || max(new_fluo) == 0
+    if length(interp_struct) < min_dp_in || max(new_fluo) == 0
         rm_list = [rm_list i];
     end
 end
@@ -404,7 +419,7 @@ output = [[interp_struct.SetIDLong]',[interp_struct.OrigParticleLong]', ...
           [interp_struct.xPos]', [interp_struct.yPos]'];
     
 header = {'SetID','ParticleID','StripeID','StripeSubID','Seconds', 'Fluo', 'AP','x','y'};
-csvwrite_with_headers([outpath '\' dataname '_dT' num2str(Tres_out) '_longform.csv'], ...
+csvwrite_with_headers([outpath '\' dataname '_dT' num2str(Tres_interp) '_longform.csv'], ...
                        output, header); 
 %--------------------Print Sample Traces----------------------------------%
 %% If desired, save individual trace plots

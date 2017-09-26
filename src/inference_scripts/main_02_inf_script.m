@@ -1,9 +1,9 @@
 %Get environment variable from job script
-stripe_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
+% stripe_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
 % stripe_groups = {4,5};
 stripe_regions = [0];
 %only do stripe centers for now
-w = 8;
+w = 7;
 state_vec = [3,2];
 %route to utilities folder
 addpath('../utilities');
@@ -12,20 +12,23 @@ addpath('../utilities');
 pool_max = 24;
 % set num local runs
 n_localEM = 25;
+%Time Resolution
+Tres = 20;
 % set max steps per inference
 n_steps_max = 1000;
 % set convergence criteria
 eps = 10e-4;
 datatype = 'weka';
-project = 'eve7stripes_inf';
+project = 'eve7stripes_inf_2017_09_25';
 
 %Path to raw data
 datapath = ['../../dat/' project '/'];
 start_time = 0;
 stop_time = 60;
 % generate save names
-dataname = ['inference_traces_w' num2str(w) '_' project '.mat'];
-date_str = '2017-09-14';
+dataname = ['inference_traces_t' num2str(Tres) '_' project '.mat'];
+
+date_str = '2017-09-25';
 out_dir =  ['../../out/' project '/' date_str '/' 'inference_w' ...
     num2str(w)  '/'];
 
@@ -39,7 +42,7 @@ end
 % if 1 inference will be conducted on "n_bootstrap" sets
 bootstrap = 1;
 n_bootstrap = 10;
-sample_size = 6000;
+sample_size = 10000;
 % keep myself from doing stupid things....
 if bootstrap == 0 && n_bootstrap ~= 1
     warning('Bootstrapping option not selected. Reseting n_bootstrap to 1')
@@ -50,8 +53,8 @@ end
 load([datapath dataname]);
 
 %Get Tres and alpha
-alpha = interp_struct(1).alpha;
-deltaT = interp_struct(1).dT;
+alpha = interp_struct(1).alpha_frac*w;
+deltaT = Tres;
 
 % create position index
 stripeIndex = unique([interp_struct.stripe_id]);
@@ -68,6 +71,7 @@ end
 outputs = struct;
 local_meta = struct;
 init_meta = struct;            
+%%
 %Note: This was designed to allow for an array of AP groups to be passed
 %in the same run request. On Savio it works better to create separate jobs
 %for each bin. Keeping the structure as it shouldn't slow things down all
@@ -205,3 +209,4 @@ for K = state_vec
     end
     save(out_file, 'outputs');
 end
+delete(pool);
