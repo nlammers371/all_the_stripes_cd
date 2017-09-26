@@ -1,6 +1,6 @@
 %Get environment variable from job script
 % stripe_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
-% stripe_groups = {4,5};
+stripe_groups = {1,2,3,4,5,6,7};
 stripe_regions = [0];
 %only do stripe centers for now
 w = 7;
@@ -11,7 +11,7 @@ addpath('../utilities');
 % max num workers
 pool_max = 12;
 % set num local runs
-n_localEM = 40;
+n_localEM = 25;
 %Time Resolution
 Tres = 20;
 % set max steps per inference
@@ -42,7 +42,7 @@ end
 % if 1 inference will be conducted on "n_bootstrap" sets
 bootstrap = 1;
 n_bootstrap = 10;
-sample_size = 10000;
+sample_size = 6000;
 % keep myself from doing stupid things....
 if bootstrap == 0 && n_bootstrap ~= 1
     warning('Bootstrapping option not selected. Reseting n_bootstrap to 1')
@@ -66,7 +66,7 @@ for stripe = stripeIndex
 end
 
 % initialize parpool
-% pool = parpool(pool_max);
+pool = parpool(pool_max);
 % structure array to store the analysis data
 outputs = struct;
 local_meta = struct;
