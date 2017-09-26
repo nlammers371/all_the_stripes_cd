@@ -4,12 +4,12 @@
 stripe_regions = [0];
 %only do stripe centers for now
 w = 7;
-state_vec = [2];
+state_vec = [3];
 %route to utilities folder
 addpath('../utilities');
 %------------------Define Inference Variables------------------------------%
 % max num workers
-pool_max = 24;
+pool_max = 12;
 % set num local runs
 n_localEM = 25;
 %Time Resolution
