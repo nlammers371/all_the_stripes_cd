@@ -4,7 +4,7 @@
 stripe_regions = [0];
 %only do stripe centers for now
 w = 7;
-state_vec = [3,2];
+state_vec = [2];
 %route to utilities folder
 addpath('../utilities');
 %------------------Define Inference Variables------------------------------%
