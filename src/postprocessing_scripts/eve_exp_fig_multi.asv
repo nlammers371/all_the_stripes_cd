@@ -12,8 +12,9 @@ bin_range = [1:7];
 datatype = 'weka';
 date_str = '2017-09-25';
 project = ['eve7stripes_inf_2017_09_25'];
-
-folder_path = ['../../out/' project '/' date_str '/inference_w' num2str(w) '/individual_results/'];
+interp_data_name = ['_w' num2str(w)];
+raw_data_name = [''];
+folder_path = ['../../out/' project '/' date_str '/inference' interp_data_name '/individual_results/'];
 files = dir(folder_path);
 %Include original (un-fit) transition rates in plots?
 plot_orig_rates = 0;
@@ -51,10 +52,11 @@ if exist(OutPath) ~= 7
 end
 
 %load traces (saved as "interp_struct")
-traces_all = load(['../../dat/' project '/inference_traces_t' num2str(dT) '_' project '.mat']);
+traces_all = load(['../../dat/' project '/inference_traces' interp_data_name '_' project '.mat']);
 traces_all = traces_all.interp_struct;
 traces_all = traces_all(ismember(floor([traces_all.stripe_id]),bin_range));
 
+dT = traces_all(1).dT;
 %% Compare Best LogL Values across bootstraps
 for b = bin_range
     figb = figure;
