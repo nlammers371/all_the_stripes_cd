@@ -1,6 +1,6 @@
 %Get environment variable from job script
-stripe_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
-% stripe_groups = {1,2,3,4,5,6,7};
+% stripe_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
+stripe_groups = {4,5,6,7};
 stripe_regions = [0];
 %only do stripe centers for now
 w = 7;
@@ -9,7 +9,7 @@ state_vec = [3];
 addpath('../utilities');
 %------------------Define Inference Variables------------------------------%
 % max num workers
-pool_max = 24;
+pool_max = 12;
 % set num local runs
 n_localEM = 25;
 %Time Resolution
@@ -51,7 +51,7 @@ end
 
 % Load data for inference into struct named: interp_struct
 load([datapath dataname]);
-
+%%
 %Get Tres and alpha
 alpha = interp_struct(1).alpha_frac*w;
 deltaT = Tres;
