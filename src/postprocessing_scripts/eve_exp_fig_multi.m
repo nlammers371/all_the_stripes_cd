@@ -4,7 +4,7 @@ addpath('../utilities/');
 %memory assumed for inference
 w = 7;
 %states used for final inference
-K = 3;
+K = 2;
 %Tres
 dT = 20;
 %set bin range
@@ -145,8 +145,9 @@ occupancy_ap_v = zeros(K,length(glb_all));
 emission_rates = zeros(K,length(glb_all));
 for i = 1:length(glb_all)
     [emission_rates(:,i), ranked_r] = sort([glb_all(i).r]);
-    R = glb_all(i).R_fit;                                       
-    [V,D] = eig(R);
+    A = glb_all(i).A_mat;
+    A = A(ranked_r,ranked_r);
+    [V,D] = eig(A);
     V = real(V);
     D = real(D);
     steady = V(:,diag(real(D))==max(diag(D)))./sum(V(:,diag(D)==max(diag(D))));
@@ -396,5 +397,5 @@ for i = 1:length(bin_vec_u)
     hmm_results(i).dT = dT;
 end
 
-save([OutPath '/hmm_results_' num2str(K) 'states_mem' num2str(w) '.mat'],'hmm_results')
+save([OutPath '/hmm_results_mem' num2str(w) '_states' num2str(K) '.mat'],'hmm_results')
 

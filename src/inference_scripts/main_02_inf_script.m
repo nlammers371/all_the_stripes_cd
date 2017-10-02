@@ -1,6 +1,6 @@
 %Get environment variable from job script
 % stripe_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};
-stripe_groups = {4,5,6,7};
+stripe_groups = {1:7};
 stripe_regions = [0];
 %only do stripe centers for now
 w = 7;
@@ -9,13 +9,13 @@ state_vec = [3];
 addpath('../utilities');
 %------------------Define Inference Variables------------------------------%
 % max num workers
-pool_max = 12;
+pool_max = 24;
 % set num local runs
 n_localEM = 25;
 %Time Resolution
 Tres = 20;
 % set max steps per inference
-n_steps_max = 1000;
+n_steps_max = 500;
 % set convergence criteria
 eps = 10e-4;
 datatype = 'weka';
@@ -42,7 +42,7 @@ end
 % if 1 inference will be conducted on "n_bootstrap" sets
 bootstrap = 1;
 n_bootstrap = 10;
-sample_size = 6000;
+sample_size = 15000;
 % keep myself from doing stupid things....
 if bootstrap == 0 && n_bootstrap ~= 1
     warning('Bootstrapping option not selected. Reseting n_bootstrap to 1')
@@ -51,7 +51,7 @@ end
 
 % Load data for inference into struct named: interp_struct
 load([datapath dataname]);
-%%
+
 %Get Tres and alpha
 alpha = interp_struct(1).alpha_frac*w;
 deltaT = Tres;
@@ -66,7 +66,9 @@ for stripe = stripeIndex
 end
 
 % initialize parpool
-pool = parpool(pool_max);
+if exist('pool') ~= 1
+    pool = parpool(pool_max);
+end
 % structure array to store the analysis data
 outputs = struct;
 local_meta = struct;
@@ -89,7 +91,7 @@ for K = state_vec
 
             % extract fluo_data
             trace_ind = find(ismember([interp_struct.stripe_sub_id],stripe_regions(1))...
-                .*ismember([interp_struct.stripe_id],stripe_list));
+                &ismember([interp_struct.stripe_id],stripe_list));
             if bootstrap    
                 set_size = sum([interp_struct(trace_ind).N]);
                 ndp = 0;    
@@ -113,7 +115,7 @@ for K = state_vec
                 for tr = 1:length(trace_ind)
                     fluo_data{tr} = interp_struct(trace_ind(tr)).fluo;
                 end
-            end
+            end            
             % random initialization of model parameters
             param_init = initialize_random (K, w, fluo_data);
             % approximate inference assuming iid data for param initialization
@@ -174,6 +176,7 @@ for K = state_vec
             outputs(s).R = local_struct(max_index).R(:);
             outputs(s).R_mat = local_struct(max_index).R;
             outputs(s).bin = mean_bin;
+            outputs(s).bins_all = stripe_list;
             outputs(s).bootstrap_flag = bootstrap;
             outputs(s).n_bootstrap = n_bootstrap;
             outputs(s).bootstrap_id = b;

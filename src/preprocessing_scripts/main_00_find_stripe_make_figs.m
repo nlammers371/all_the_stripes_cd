@@ -193,128 +193,135 @@ cluster_path = [ap_pos_path '/stripe_fits/'];
 if exist(cluster_path) ~= 7
     mkdir(cluster_path);
 end
-
-s_ids = 1:7;
-%Impose stripe width of 3 AP
-stripe_radius = .015;
-%Max iterations allowed
-max_iters = 1000;    
-%Set granularity for ap stripe plots
-ap_size = .001;
-%Store set titles
-set_titles = {};
-set_subtitles = {};
-%indicates flank)
-stripe_positions = cell(1,length(filenames));
-stripe_id_cell = cell(1,length(filenames)); 
-f_unit_cell = cell(1,length(filenames)); 
-%Find stripe centers for each set
-for s = 1:length(filenames)
-    ap_array = ap_fluo_levels(s,:);
-    %set negatives to 0
-    ap_array(ap_array < 0) = 0;
-    %find location of first and last nonzero elements
-    start = find(ap_array,1);
-    stop = find(ap_array,1,'last');
-    bounded_ap = ap_index(start:stop);
-    ap_array = ap_array(start:stop);
-    f_unit_counts = [];
-    %Break cumulative fluo up into units of 50000. Each such unit is one
-    %observation used for clustering (a way of coarse-grained, weighted
-    %clustering)
-    for i = 1:length(ap_array)
-        f = ceil(ap_array(i)/5e4);    
-        f_unit_counts = [f_unit_counts repelem(bounded_ap(i),f)];   
-    end
-    %Cluster Data
-    n_changes = 1;
-    iter = 0;
-    id_vec_old = zeros(1,length(f_unit_counts));
-    %Remove stripe center priors that are not present in set
-    stripe_centers = stripe_priors(1==((stripe_priors >= min(bounded_ap))...
-        .*(stripe_priors <= max(bounded_ap))));
-    %identify stripes that appear to be in set
-    stripe_id_vec = s_ids(ismember(stripe_priors,stripe_centers));
-    n_stripes = length(stripe_centers);
-    %perform clustering
-    while n_changes > 0    
-        id_vec = zeros(1,length(f_unit_counts));
-        %for each particle, find nearest center
-        for p = 1:length(f_unit_counts)
-            ap = f_unit_counts(p);
-            [m ,id] = nanmin(abs(ap-stripe_centers));
-            id_vec(p) = id;
+use_old_boundaries = input('Use previous stripe boundaries (1=yes, 0=no)?');
+if use_old_boundaries == 1
+    load([datapath 'stripe_boundaries_' project '.mat'])
+    load([datapath 'stripe_id_cell_' project '.mat'])
+else
+    s_ids = 1:7;
+    %Impose stripe width of 3 AP
+    stripe_radius = .015;
+    %Max iterations allowed
+    max_iters = 1000;    
+    %Set granularity for ap stripe plots
+    ap_size = .001;
+    %Store set titles
+    set_titles = {};
+    set_subtitles = {};
+    %indicates flank)
+    stripe_positions = cell(1,length(filenames));
+    stripe_id_cell = cell(1,length(filenames)); 
+    f_unit_cell = cell(1,length(filenames)); 
+    %Find stripe centers for each set
+    for s = 1:length(filenames)
+        ap_array = ap_fluo_levels(s,:);
+        %set negatives to 0
+        ap_array(ap_array < 0) = 0;
+        %find location of first and last nonzero elements
+        start = find(ap_array,1);
+        stop = find(ap_array,1,'last');
+        bounded_ap = ap_index(start:stop);
+        ap_array = ap_array(start:stop);
+        f_unit_counts = [];
+        %Break cumulative fluo up into units of 50000. Each such unit is one
+        %observation used for clustering (a way of coarse-grained, weighted
+        %clustering)
+        for i = 1:length(ap_array)
+            f = ceil(ap_array(i)/5e4);    
+            f_unit_counts = [f_unit_counts repelem(bounded_ap(i),f)];   
         end
-        %check how many assignments changed
-        n_changes = sum(id_vec~=id_vec_old);
-        %Re-calculate centers
-        stripe_centers_new = zeros(1,length(stripe_centers));
-        for i = 1:length(stripe_centers)
-            mean_p = nanmean(f_unit_counts(ismember(id_vec,i)));
-            stripe_centers_new(i) = mean_p;
-        end        
-        iter = iter + 1;
-        id_vec_old = id_vec;
-        stripe_centers = stripe_centers_new;    
-        if iter > max_iters
-            warning('Maximum iterations exceeded');
-            break
+        %Cluster Data
+        n_changes = 1;
+        iter = 0;
+        id_vec_old = zeros(1,length(f_unit_counts));
+        %Remove stripe center priors that are not present in set
+        stripe_centers = stripe_priors(1==((stripe_priors >= min(bounded_ap))...
+            .*(stripe_priors <= max(bounded_ap))));
+        %identify stripes that appear to be in set
+        stripe_id_vec = s_ids(ismember(stripe_priors,stripe_centers));
+        n_stripes = length(stripe_centers);
+        %perform clustering
+        while n_changes > 0    
+            id_vec = zeros(1,length(f_unit_counts));
+            %for each particle, find nearest center
+            for p = 1:length(f_unit_counts)
+                ap = f_unit_counts(p);
+                [m ,id] = nanmin(abs(ap-stripe_centers));
+                id_vec(p) = id;
+            end
+            %check how many assignments changed
+            n_changes = sum(id_vec~=id_vec_old);
+            %Re-calculate centers
+            stripe_centers_new = zeros(1,length(stripe_centers));
+            for i = 1:length(stripe_centers)
+                mean_p = nanmean(f_unit_counts(ismember(id_vec,i)));
+                stripe_centers_new(i) = mean_p;
+            end        
+            iter = iter + 1;
+            id_vec_old = id_vec;
+            stripe_centers = stripe_centers_new;    
+            if iter > max_iters
+                warning('Maximum iterations exceeded');
+                break
+            end
         end
+        %convenience vector
+        index_vec = 1:length(id_vec);
+        stripe_vec = zeros(1,length(id_vec));
+        stripe_vec_full = zeros(1,length(id_vec));
+        stripe_boundaries = [];
+        %assign traces to stripe regions
+        for i = 1:n_stripes
+            sc = stripe_centers(i);
+            distances = f_unit_counts(id_vec==i) - sc;
+            neg_edge = min(distances);
+            pos_edge = max(distances);
+            candidate_ids = index_vec(id_vec==i);        
+            %ID AP positions that are in stripe center
+            stripe_ids = candidate_ids(abs(distances) <= stripe_radius);
+            stripe_vec(stripe_ids) = i;     
+            %Allow radii of boundary regions to be flexible for time being
+            stripe_vec_full(candidate_ids) = i;     
+            stripe_boundaries = [stripe_boundaries; sc+neg_edge sc-stripe_radius sc sc+stripe_radius sc+pos_edge];       
+        end
+        stripe_positions{s} = stripe_boundaries;
+        stripe_id_cell{s} = stripe_id_vec;
+        f_unit_cell{s} = f_unit_counts;
+    %     stripe_id_full_cell{s} = f_unit_counts;
+        fn = filenames{s};
+        tt_s_end = strfind(fn,'\Comp') - 1;
+        tt_s_start = strfind(fn,'\2017') + 1;
+        st_s_end = length(fn) - 4;
+        t_string = fn(tt_s_start:tt_s_end);  
+        st_string = fn(tt_s_end + 2: st_s_end);
+        t_string = strrep(t_string,'_','-');
+        st_string = strrep(st_string,'_','-');
+        set_titles = [set_titles {t_string}];
+        set_subtitles = [set_subtitles {st_string}];
+        %Plot Stripes
+        stripe_fig = figure('Visible', 'off');
+        ap_vec = round(min(f_unit_counts),3):ap_size:round(max(f_unit_counts),3);
+        hold on
+        legend_string = {};
+        for i = 1:n_stripes
+            %plot full background
+            ap_vec_plot_full = histc(f_unit_counts(stripe_vec_full==i),ap_vec);        
+            p = bar(ap_vec,ap_vec_plot_full,'FaceColor',cm(1+(stripe_id_vec(i)-1)*increment,:),'FaceAlpha',.2);
+            set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
+            %overlay stripe centers
+            legend_string = [legend_string {['Stripe ' num2str(stripe_id_vec(i))]}];
+            ap_vec_plot = histc(f_unit_counts(stripe_vec==i),ap_vec);        
+            bar(ap_vec,ap_vec_plot,'FaceColor',cm(1+(stripe_id_vec(i)-1)*increment,:),'FaceAlpha',.7)
+        end
+        grid on
+        legend(legend_string{:});
+        title(['Inferred Stripe Positions, ' t_string ' (Set ' num2str(s) ')']);
+        xlabel('AP Position (%)');
+        ylabel('AU')
+        saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) '.png'],'png')
+        saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) '.eps'],'epsc')
+        saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) '.fig'],'fig')
     end
-    %convenience vector
-    index_vec = 1:length(id_vec);
-    stripe_vec = zeros(1,length(id_vec));
-    stripe_vec_full = zeros(1,length(id_vec));
-    stripe_boundaries = [];
-    %assign traces to stripe regions
-    for i = 1:n_stripes
-        sc = stripe_centers(i);
-        distances = f_unit_counts(id_vec==i) - sc;
-        neg_edge = min(distances);
-        pos_edge = max(distances);
-        candidate_ids = index_vec(id_vec==i);        
-        %ID AP positions that are in stripe center
-        stripe_ids = candidate_ids(abs(distances) <= stripe_radius);
-        stripe_vec(stripe_ids) = i;     
-        %Allow radii of boundary regions to be flexible for time being
-        stripe_vec_full(candidate_ids) = i;     
-        stripe_boundaries = [stripe_boundaries; sc+neg_edge sc-stripe_radius sc sc+stripe_radius sc+pos_edge];       
-    end
-    stripe_positions{s} = stripe_boundaries;
-    stripe_id_cell{s} = stripe_id_vec;
-    f_unit_cell{s} = f_unit_counts;
-%     stripe_id_full_cell{s} = f_unit_counts;
-    fn = filenames{s};
-    tt_s_end = strfind(fn,'\Comp') - 1;
-    tt_s_start = strfind(fn,'\2017') + 1;
-    st_s_end = length(fn) - 4;
-    t_string = fn(tt_s_start:tt_s_end);  
-    st_string = fn(tt_s_end + 2: st_s_end);
-    t_string = strrep(t_string,'_','-');
-    st_string = strrep(st_string,'_','-');
-    set_titles = [set_titles {t_string}];
-    set_subtitles = [set_subtitles {st_string}];
-    %Plot Stripes
-    stripe_fig = figure('Visible', 'off');
-    ap_vec = round(min(f_unit_counts),3):ap_size:round(max(f_unit_counts),3);
-    hold on
-    legend_string = {};
-    for i = 1:n_stripes
-        ap_vec_plot_full = histc(f_unit_counts(stripe_vec_full==i),ap_vec);        
-        p = bar(ap_vec,ap_vec_plot_full,'FaceColor',cm(1+(stripe_id_vec(i)-1)*increment,:),'FaceAlpha',.2);
-        set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
-        legend_string = [legend_string {['Stripe ' num2str(stripe_id_vec(i))]}];
-        ap_vec_plot = histc(f_unit_counts(stripe_vec==i),ap_vec);        
-        bar(ap_vec,ap_vec_plot,'FaceColor',cm(1+(stripe_id_vec(i)-1)*increment,:),'FaceAlpha',.7)
-    end
-    grid on
-    legend(legend_string{:});
-    title(['Inferred Stripe Positions, ' t_string ' (Set ' num2str(s) ')']);
-    xlabel('AP Position (%)');
-    ylabel('AU')
-    saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) '.png'],'png')
-    saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) '.eps'],'epsc')
-    saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) '.fig'],'fig')
 end
 %% Review Stripe Classifications
 i = 1;
@@ -394,6 +401,7 @@ for i = 1:length(trace_struct)
         if AP <= sb(5) && AP >= sb(1)
             trace_struct(i).stripe_id = s_id_list(j);            
             trace_struct(i).stripe_sub_id = 0;
+            trace_struct(i).stripe_center_ap = sb(3);
             if AP >= sb(4)
                 trace_struct(i).stripe_sub_id = 1;
             elseif AP <= sb(2)
@@ -409,7 +417,8 @@ if length(trace_struct(isnan([trace_struct.stripe_id]))) > 5
 end
 
 save([datapath 'raw_traces_' project '.mat'],'trace_struct') 
-
+save([datapath 'stripe_boundaries_' project '.mat'],'stripe_boundaries')
+save([datapath 'stripe_id_cell_' project '.mat'],'stripe_id_cell')
 %-------------Plot Mean and Cumulative Fluorescence by Set----------------%
 %Make Titles for Plots (This will lonly work for eve2 format set titles
 %currently)

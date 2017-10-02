@@ -11,7 +11,7 @@ stop_time = 60;
 % generate save names
 dataname_int = ['inference_traces_t' num2str(Tres) '_' project '.mat'];
 
-% dataname_raw = 'raw_traces_s0_60_mHMMeve2_weka_inf_2017_09_20';
+% dataname_raw = 'raw_traces_s0_60_mHMMeve2_weka_inf_2017_09_25';
 
 date_str = '5_partitions_test';
 autopath = ['../../fig/experimental_system/' project '/preprocessing/ElongationTime/'];
