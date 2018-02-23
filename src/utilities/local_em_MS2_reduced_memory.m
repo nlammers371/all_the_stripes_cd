@@ -256,6 +256,9 @@ function local_em_outputs = local_em_MS2_reduced_memory (fluo_values, ...
             
             % list of log (X_t - V_t)^2 terms that appear in the emission pdf's
             difference_list_temp = zeros(K^w, fluo_lengths{i_tr});
+            if K ~= length(v_signs)
+                error('inconsitent state id and vec dims')
+            end
             for i = 1:n_unique
                 states = naive_count_map{i};
                 difference_list_temp(states, :) = ...

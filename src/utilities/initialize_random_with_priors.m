@@ -40,4 +40,8 @@ function param_init = initialize_random_with_priors (K, noise, v)
     
     % random v generation
     v_max = max(v) * (0.7 + 0.6*rand());
-    param_init.v = [0, sort(rand(1, K-2)), 1] * v_max;
+    if K==1
+        param_init.v = rand()*v_max;
+    else
+        param_init.v = [0, sort(rand(1, K-2)), 1] * v_max;
+    end

@@ -4,7 +4,7 @@
 % folder_path = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve2spots\';
 folder_path = 'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\';
 %Assign Project Identifier
-project = 'eve7stripes_inf_2017_09_25';
+project = 'eve7stripes_inf_2018_02_20';
 
 figpath = ['../../fig/experimental_system/preprocessing/' project '/'];
 datapath = ['../../dat/' project '/'];
@@ -19,7 +19,7 @@ if exist(ap_pos_path) ~= 7
     mkdir(ap_pos_path)
 end  
 % Keyword to ensure only sets from current project are pulled
-keyword = 'eve';
+keyword = '_30uW_550V';
 %vector of data set numbers to include
 
 %-------------------------Set Summary Parameters--------------------------%
@@ -41,7 +41,7 @@ for K = 1 : length(dirinfo)
     dir_struct(i_pass).folder = thisdir;
     i_pass = i_pass + 1;
 end
-
+%%
 %Save Filepaths of all CompiledParticle Sets
 filenames = {};
 APnames = {};
@@ -370,6 +370,11 @@ while i <= length(filenames)
             bar(ap_vec,ap_vec_plot,'FaceColor',cm(1+(k-1)*increment,:),'FaceAlpha',.7)
         end        
         grid on
+        fn = filenames{i};
+        tt_s_end = strfind(fn,'\Comp') - 1;
+        tt_s_start = strfind(fn,'\2017') + 1;
+        st_s_end = length(fn) - 4;
+        t_string = fn(tt_s_start:tt_s_end); 
         legend(legend_string{:});
         title(['Inferred Stripe Positions (Corrected), ' t_string ' (Set ' num2str(i) ')']);
         xlabel('AP Position (%)');

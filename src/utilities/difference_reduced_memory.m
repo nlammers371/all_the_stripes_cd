@@ -42,11 +42,10 @@ function diff = difference_reduced_memory (fluo_logs, fluo_signs, time, K, w, ..
     signs_combined = [fluo_signs', -v_multi_sign_time];
     
     terms_max = max(logs_combined, [], 2);        
-
-    terms_diff = logs_combined - repmat(terms_max, [1, (K+1)]);
+    terms_diff = logs_combined - repmat(terms_max, 1, K+1);
     terms_diff_with_signs = signs_combined.*exp(terms_diff);
     terms_diff_sum_with_signs = sum(terms_diff_with_signs, 2);
     diff = 2*(terms_max + log(abs(terms_diff_sum_with_signs)));
     
     % account for cases when all terms are -Inf
-    diff(isnan(diff)) = -Inf;
+    diff(isnan(diff)) = -Inf;    

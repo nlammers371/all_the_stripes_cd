@@ -1,5 +1,5 @@
 %Create Weighted Average Autocorrelation
-function [wt_autocorr, a_boot_errors, wt_dd, dd_boot_errors] = weighted_autocorrelation(traces, lags, bootstrap)
+function [wt_autocorr, a_boot_errors, wt_dd, dd_boot_errors] = weighted_autocorrelation(traces, lags, bootstrap,n_boots,trace_weights)
     %traces: array of traces with zeros preceeding and succeeding period of
     %        activity. Oriented column-wise
     %lags: num lags to use
@@ -8,9 +8,10 @@ function [wt_autocorr, a_boot_errors, wt_dd, dd_boot_errors] = weighted_autocorr
     time_steps = zeros(lags+1,size(traces,2));
     %Convert NaNs to zeros
     traces(isnan(traces)) = 0;
-    if bootstrap
-        n_boots = 100;
-    else
+    t_filter = sum(traces>0)>1;
+    traces = traces(:,t_filter);
+    trace_weights = trace_weights(t_filter);
+    if ~bootstrap
         n_boots = 1;
     end
     samples = zeros(lags+1,n_boots);    
@@ -20,7 +21,7 @@ function [wt_autocorr, a_boot_errors, wt_dd, dd_boot_errors] = weighted_autocorr
         %replacement, each the size of original array
         if bootstrap
             s_vec = 1:size(traces,2);
-            s = randsample(s_vec,length(s_vec),true);
+            s = randsample(s_vec,length(s_vec),true,trace_weights);
             trace_sample = traces(:,s);
         else
             trace_sample = traces;
@@ -28,7 +29,7 @@ function [wt_autocorr, a_boot_errors, wt_dd, dd_boot_errors] = weighted_autocorr
         for col = 1:size(trace_sample,2)            
             trace = trace_sample(:,col);
             if sum(isnan(trace)) > 0 
-                error('wtf');
+                error('Problem with NaN filtering');
             end            
             %Isolate active portion
             trace_active = trace(find(trace,1):find(trace,1,'last'));
@@ -39,7 +40,7 @@ function [wt_autocorr, a_boot_errors, wt_dd, dd_boot_errors] = weighted_autocorr
                 t_lags = lags;
             end            
             auto_array(1:t_lags+1,col) = autocorr(trace_active,t_lags);
-            time_steps(1:t_lags+1,col) = fliplr((length(trace)-t_lags):length(trace));
+            time_steps(1:t_lags+1,col) = fliplr((length(trace_active)-t_lags):length(trace_active));
         end
         %Take weighted mean. Traces with length < lags should just not be
         %factored in for lags beyond their length
@@ -52,4 +53,3 @@ wt_autocorr = mean(samples,2);
 wt_dd = mean(dd_samples,2);
 a_boot_errors = std(samples')';
 dd_boot_errors = std(dd_samples')';
-

@@ -9,7 +9,7 @@ state_vec = [3];
 addpath('../utilities');
 %------------------Define Inference Variables------------------------------%
 % max num workers
-pool_max = 24;
+pool_max = 12;
 % set num local runs
 n_localEM = 25;
 %Time Resolution

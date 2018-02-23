@@ -2,9 +2,14 @@ addpath('../utilities');
 %memory assumed for inference
 w = 7;
 %states used for final inference
-K = 2;
+K = 3;
 %set bin range
 stripe_range = [1:7];
+%write to csv?
+write_csv = 0;
+%Use aggregate fit rather than stripe-specific?
+aggregate_fit = 1;
+%Set time res
 dT = 20;
 start_time = 0;
 stop_time = 60;
@@ -16,11 +21,19 @@ project = 'eve7stripes_inf_2017_09_25';
 datapath = ['../../fig/experimental_system\' project '\' date_str ...
     '\mem' num2str(w) '_states' num2str(K)  '\hmm_results_mem' num2str(w)...
     '_states' num2str(K) '.mat']; 
-load('D:\Data\Nick\projects\all_the_stripes_cd\fig\experimental_system\eve7stripes_inf_2017_09_25\2017-09-25\mem7_states3\hmm_results_mem7_states3.mat')
-OutPath = ['../../out/' project '/' date_str '/mem' ...
-    num2str(w) '_states' num2str(K) '/'];
-ViterbiPath = ['../../out/' project '/' date_str '/mem' ...
-    num2str(w) '_states' num2str(K) '/viterbi_fits/' ];
+load(datapath)
+if aggregate_fit
+    OutPath = ['../../out/' project '/' date_str '/mem' ...
+        num2str(w) '_states' num2str(K) '/'];
+    ViterbiPath = ['../../out/' project '/' date_str '/mem' ...
+        num2str(w) '_states' num2str(K) '/viterbi_fits_aggregate/' ];
+else
+    OutPath = ['../../out/' project '/' date_str '/mem' ...
+        num2str(w) '_states' num2str(K) '/'];
+    ViterbiPath = ['../../out/' project '/' date_str '/mem' ...
+        num2str(w) '_states' num2str(K) '/viterbi_fits/' ];
+end
+
 if exist(ViterbiPath) ~= 7
     mkdir(ViterbiPath);
 end
@@ -29,11 +42,10 @@ traces_all = load(['../../dat/' project '/inference_traces_t' num2str(dT) '_'...
     project '.mat']);
 traces_all = traces_all.interp_struct;
 traces_all = traces_all(ismember(floor([traces_all.stripe_id]),stripe_range));
-%initialize output array (will be written to csv)
-% output_mat = [];
+%Set header
 header = {'SetID','ParticleID','StripeID','StripeSubID','Seconds', 'Fluo', ...
     'Fluo_Fit_Viterbi', 'Promoter_State_Viterbi','Stripe_Center', 'AP','x','y'};
-%% Viterbi Plots
+%% Viterbi Fits
 % w = traces_all(1).w;
 %alpha (lenght of MS2 Loops in time steps)
 alpha = hmm_results(1).alpha;
@@ -43,8 +55,13 @@ dT = hmm_results(1).dT;
 job_size = 30;
 s_iter = 1;
 for bin = stripe_range
-    hmm_bin = hmm_results([hmm_results.binID]==bin);
+    if aggregate_fit
+        hmm_bin = hmm_results([hmm_results.binID]==0);
+    else
+        hmm_bin = hmm_results([hmm_results.binID]==bin);
+    end
     if isempty(hmm_bin)
+        warning('No Inference Results for Stripe Region')
         continue
     end
     v = hmm_bin.initiation_mean*dT;
@@ -52,10 +69,10 @@ for bin = stripe_range
     pi0_log = log(hmm_bin.pi0_mean);
     A_log = log(hmm_bin.A_mean);
     bin_traces = traces_all([traces_all.stripe_id]==bin);
-%     bin_traces = traces_all([bin_traces.stripe_sub_id]==0);
+    bin_traces = traces_all([bin_traces.stripe_sub_id]==0);
     viterbi_fits = struct;
     n_traces = length(bin_traces);
-    n_jobs = ceil(n_traces/job_size);
+    n_jobs = ceil(n_traces/job_size);    
     for n = 1:n_jobs
         viterbi_fits = struct;        
         batch_size = min(job_size,(n_traces-(n-1)*job_size));
@@ -97,5 +114,10 @@ for bin = stripe_range
     s_iter = s_iter + 1;    
 end
 
-csvwrite_with_headers([OutPath '\' project '_dT' num2str(dT) '_longform.csv'], ...
+if aggregate_fit
+    csvwrite_with_headers([OutPath '\' project '_dT' num2str(dT) '_longform_aggregate.csv'], ...
                        output_mat, header); 
+else
+    csvwrite_with_headers([OutPath '\' project '_dT' num2str(dT) '_longform.csv'], ...
+                       output_mat, header); 
+end               

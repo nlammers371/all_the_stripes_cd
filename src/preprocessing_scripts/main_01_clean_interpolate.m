@@ -1,3 +1,4 @@
+addpath('../utilities')
 %---------------------Set Cleaning and Summary Parameters-----------------%
 %Which Nuclear Cycles do we wish to include?
 nuclear_cycles = [14];
@@ -17,8 +18,11 @@ Tres_interp = 20;
 alpha_rat = 1302/6444;
 %Designate sets to remove from final, cleaned set (due to QC issues)
 rm_names = {'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\2017-05-14-A150umP_eve_5uW\CompiledParticles_classifier_2017_05_14_A150umP_eve.mat',...
-            'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\2017-05-13-A200umP_eve_5uW\CompiledParticles_classifier_2017-05-14-A150umP_eve_5uW.mat'...
-           };
+            'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\2017-05-13-A200umP_eve_5uW\CompiledParticles_classifier_2017-05-14-A150umP_eve_5uW.mat',...
+            'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\2017-07-06-A200umP_eve_5uW\CompiledParticles.mat',...
+            'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\2017-07-10-P100umA_eve_5uW\CompiledParticles.mat',...
+            'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\2017-07-09-A150umP_eve_5uW\CompiledParticles.mat'
+            };
 start_time = 0;
 stop_time = 60;
 %------------------------Define Project Vars------------------------------%
@@ -32,8 +36,8 @@ outpath = ['../../dat/' project '/'];
 figpath = ['../../fig/' project '/'];
 
 dataname = ['inference_traces_t' num2str(Tres_interp) '_' project '.mat'];
-
 tracepath = [figpath '/traces_dT' num2str(Tres_interp) '/'];
+
 if exist(figpath) ~= 7
     mkdir(figpath);
 end
@@ -423,11 +427,41 @@ header = {'SetID','ParticleID','StripeID','StripeSubID','Seconds', 'Fluo',...
     'StripeCenter','AP','x','y'};
 csvwrite_with_headers([outpath '\' dataname '_dT' num2str(Tres_interp) '_longform.csv'], ...
                        output, header); 
+%% Save Cleaned Set of un-interpolated traces
+%Look  start and end zeros tails
+rm_list = [];
+for i = 1:length(trace_struct)
+    n = length(trace_struct(i).fluo);
+    % One last filter to find first and last non-zero points
+    trace_struct(i).OrigParticleLong = repelem(trace_struct(i).OriginalParticle,n);
+    trace_struct(i).StripeIDLong = repelem(trace_struct(i).stripe_id,n);
+    trace_struct(i).StripeSubIDLong = repelem(trace_struct(i).stripe_sub_id,n);
+    trace_struct(i).SetIDLong = repelem(trace_struct(i).setID,n);
+    trace_struct(i).StripeCenterLong = repelem(trace_struct(i).stripe_center_ap,n);
+    
+    if length(trace_struct) < min_dp_in || max(trace_struct(i).fluo) == 0
+        rm_list = [rm_list i];
+    end
+end
+ind_vec = 1:length(trace_struct);
+trace_struct = trace_struct(~ismember(ind_vec,rm_list));
+
+
+% Generate csv
+output = [[trace_struct.SetIDLong]',[trace_struct.OrigParticleLong]', ...
+         [trace_struct.StripeIDLong]', [trace_struct.StripeSubIDLong]',...
+          [trace_struct.time]', [trace_struct.fluo]',...
+          [trace_struct.StripeCenterLong]', [trace_struct.ap_vector]', ...
+          [trace_struct.xPos]', [trace_struct.yPos]'];
+    
+header = {'SetID','ParticleID','StripeID','StripeSubID','Seconds', 'Fluo',...
+    'StripeCenter','AP','x','y'};
+csvwrite_with_headers([outpath '\' project '_raw_longform.csv'], ...
+                       output, header); 
 %--------------------Print Sample Traces----------------------------------%
 %% If desired, save individual trace plots
 if print_traces
     for i = 1:10:length(interp_struct)
-
         t_fig = figure('Visible','off');
         hold on
         plot(interp_struct(i).time_orig / 60, interp_struct(i).fluo_orig, '-o','Linewidth',1.5)
