@@ -112,7 +112,7 @@ for set_num = 1:length(cp_filenames)
         fluo_vec = [fluo_vec fluo];
         frame_vec = [frame_vec frames];
         nucleus_vec = [nucleus_vec repelem(set_struct(j).Nucleus,length(fluo))];
-        stripe_id_vec = [stripe_id_vec repelem(set_struct(j).stripe_id,length(fluo))];
+        stripe_id_vec = [stripe_id_vec repelem(set_struct(j).stripe_id_coarse,length(fluo))];
         xPos_vec = [xPos_vec xPos];
     end
     max_stripe = nanmax(stripe_id_vec);
@@ -125,7 +125,7 @@ for set_num = 1:length(cp_filenames)
         flip_flag = 1;
     end
     %Iterate Through Frames
-    for CurrentFrame = 222:225 %FrameRange    
+    for CurrentFrame = FrameRange    
         %Highlight Active Regions with Viterbi State    
         %Track pixel assignments
         NucleusFluoMat = NaN(yDim,xDim,3);
@@ -202,7 +202,7 @@ for set_num = 1:length(cp_filenames)
         max_p = max(NucleusFluoMat,[],3);
         for k = 1:3
             nc_slice = NucleusFluoMat(:,:,k);
-            nc_slice(isnan(max_p)) = .2;
+%             nc_slice(isnan(max_p)) = .2;
             nc_slice(NucleusBorderMat>0) = 0;
             NucleusFluoMat(:,:,k) = nc_slice;
         end
@@ -222,7 +222,7 @@ for set_num = 1:length(cp_filenames)
     %     
     %     %Overlay all channels       
 
-        OverlayFig = figure;%('Visible','off');
+        OverlayFig = figure('Visible','off');
         clf
         if flip_flag
             imshow(fliplr(NucleusFluoMat))   
