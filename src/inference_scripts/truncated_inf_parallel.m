@@ -1,7 +1,7 @@
 % Script to Conduct HMM Inference on Experimental Data
 close all
 clear all
-addpath('../utilities'); % Route to utilities folder
+addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 savio = 0; % Specify whether inference is being conducted on Savio Cluster
 ap_ref_index = 1:7;
 ap_ref_index = reshape([ap_ref_index-.1 ;ap_ref_index; ap_ref_index + .1],1,[]);
@@ -14,14 +14,14 @@ if savio
         bin_groups{i} = ap_ref_index(savio_groups{i});
     end
 else
-    bin_groups = {.9,1,1.1};
+    bin_groups = {1.9,2,2.1,2.9,3,3.1,3.9,4,4.1,4.9,5,5.1,5.9,6,6.1,6.9,7,7.1};
 end
 warning('off','all') %Shut off Warnings
 
 %-------------------------------System Vars-------------------------------%
 w = 7; % Memory
 Tres = 20; % Time Resolution
-state_vec = [1]; % State(s) to use for inference
+state_vec = [2]; % State(s) to use for inference
 stop_time_inf = 60; % Specify cut-off time for inference
 min_dp = 10; % min length of traces to include
 clipped = 1; % if 0 use "full" trace with leading and trailing 0's
@@ -64,9 +64,9 @@ out_suffix =  ['/' project '/truncated_inference_w' num2str(w) '_t' num2str(Tres
     '_alpha' num2str(round(alpha*10)) '_f' num2str(fluo_field) '_cl' num2str(clipped) ...
     '_no_ends' num2str(clipped_ends) '/']; 
 if savio
-    out_prefix = '/global/scratch/nlammers/hmmm_data/inference_out/';
+    out_prefix = '/global/scratch/nlammers/eve7stripes_data/inference_out/';
 else    
-    out_prefix = 'E:/Nick/Dropbox (Garcia Lab)/hmmm_data/inference_out/';
+    out_prefix = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
 end
 out_dir = [out_prefix out_suffix];
 mkdir(out_dir);
@@ -291,7 +291,7 @@ for K = state_vec
                     output.total_steps = local_struct(max_index).total_steps;                                  
                     output.total_time = 100000*(now - iter_start);            
                     % Save inference ID variables
-                    output.APbin = min(bin_list):max(bin_list);
+                    output.stripe_id = min(bin_list):max(bin_list);
                     output.boot_set = NaN;
                     if set_bootstrap
                         output.boot_set = boot_set;
