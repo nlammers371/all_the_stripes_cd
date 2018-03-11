@@ -1,10 +1,10 @@
 % Script to Conduct HMM Inference on Experimental Data
 close all
 clear all
-addpath('../utilities'); % Route to utilities folder
+addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 savio = 0; % Specify whether inference is being conducted on Savio Cluster
 ap_ref_index = 1:7;
-ap_ref_index = reshape([ap_ref_index-.1 ;ap_ref_index; ap_ref_index + .1],1,[]);
+ap_ref_index = reshape([ap_ref_index-1/3 ;ap_ref_index; ap_ref_index + 1/3],1,[]);
 
 if savio
     %Get environment variable from job script
@@ -14,14 +14,17 @@ if savio
         bin_groups{i} = ap_ref_index(savio_groups{i});
     end
 else
-    bin_groups = {.9,1,1.1};
+    bin_groups = {};
+    for i = 2:22
+        bin_groups = [bin_groups{:} {round(i/3,1)}];
+    end
 end
 warning('off','all') %Shut off Warnings
 
 %-------------------------------System Vars-------------------------------%
 w = 7; % Memory
 Tres = 20; % Time Resolution
-state_vec = [1]; % State(s) to use for inference
+state_vec = [2]; % State(s) to use for inference
 stop_time_inf = 60; % Specify cut-off time for inference
 min_dp = 10; % min length of traces to include
 clipped = 1; % if 0 use "full" trace with leading and trailing 0's
@@ -29,6 +32,7 @@ fluo_field = 1; % specify which fluo field to (1 or 3)
 inference_times = (10:5:45)*60;
 t_window = 15*60; % determines width of sliding window
 clipped_ends = 1; % if one, remove final w time steps from traces
+dynamic_bins = 1; % if 1, use time-resolved region classifications
 %------------------Define Inference Variables------------------------------%
 %if 1, prints each local em result to file (fail-safe in event that
 
@@ -44,10 +48,10 @@ eps = 10e-4; % set convergence criteria
 
 %----------------------------Bootstrap Vars-------------------------------%
 dp_bootstrap = 1;
-set_bootstrap = 0;
+set_bootstrap = 1;
 n_bootstrap = 5;
 sample_size = 4000;
-min_dp_per_inf = 1500; % inference will be aborted if fewer present
+min_dp_per_inf = 1000; % inference will be aborted if fewer present
 %----------------------------Set Write Paths------------------------------%
 project = 'eve7stripes_inf_2018_02_20';
 datapath = ['../../dat/' project '/']; %Path to raw data
@@ -62,11 +66,11 @@ binIndex = unique([trace_struct_final.stripe_id_inf]); % Position index
 % Set write path (inference results are now written to external directory)
 out_suffix =  ['/' project '/truncated_inference_w' num2str(w) '_t' num2str(Tres)...
     '_alpha' num2str(round(alpha*10)) '_f' num2str(fluo_field) '_cl' num2str(clipped) ...
-    '_no_ends' num2str(clipped_ends) '/']; 
+    '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/']; 
 if savio
-    out_prefix = '/global/scratch/nlammers/hmmm_data/inference_out/';
+    out_prefix = '/global/scratch/nlammers/eve7stripes_data/inference_out/';
 else    
-    out_prefix = 'E:/Nick/Dropbox (Garcia Lab)/hmmm_data/inference_out/';
+    out_prefix = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
 end
 out_dir = [out_prefix out_suffix];
 mkdir(out_dir);
@@ -84,31 +88,38 @@ mkdir(out_dir_single);
 % apply time filtering 
 trace_struct_filtered = [];
 for i = 1:length(trace_struct_final)
-    temp = trace_struct_final(i);
+    temp_old = trace_struct_final(i);
+    temp_new = struct;
     if clipped
-        time = temp.time_interp;
+        time = temp_old.time_interp;
         if fluo_field == 1            
-            fluo = temp.fluo_interp;
+            fluo = temp_old.fluo_interp;
         elseif fluo_field == 3           
-            fluo = temp.fluo_interp3;
+            fluo = temp_old.fluo_interp3;
         else
             error('unknown fluo field')
         end
     else
-        time = temp.time_full;
+        time = temp_old.time_full;
         if fluo_field == 1            
-            fluo = temp.fluo_full;
+            fluo = temp_old.fluo_full;
         elseif fluo_field == 3            
-            fluo = temp.fluo_full3;
+            fluo = temp_old.fluo_full3;
         else
             error('unknown fluo field')
         end
     end
     tf = time((time>=0)&(time<stop_time_inf*60));
     if length(tf) >= min_dp
-        temp.fluo = fluo(ismember(time,tf));
-        temp.time = tf;
-        trace_struct_filtered = [trace_struct_filtered temp];
+        temp_new.fluo_inf = fluo(ismember(time,tf));
+        temp_new.time_inf = tf;
+        temp_new.setID = temp_old.setID;
+        temp_new.inference_flag = temp_old.inference_flag;
+        temp_new.stripe_id_vec = temp_old.stripe_id_vec;
+        temp_new.fluo_orig = temp_old.fluo;
+        temp_new.time_orig = temp_old.time;
+        temp_new.ParticleID = temp_old.ParticleID;
+        trace_struct_filtered = [trace_struct_filtered temp_new];
     end
 end
 trace_struct_filtered = trace_struct_filtered([trace_struct_filtered.inference_flag]==1);  
@@ -116,13 +127,13 @@ if clipped_ends
     rm_index = 1:length(trace_struct_filtered);
     rm_indices = [];
     for i = 1:length(trace_struct_filtered)
-        ft = trace_struct_filtered(i).fluo;
-        tt = trace_struct_filtered(i).time;
-        ft = ft(1:end-w);
-        tt = tt(1:end-w);
-        trace_struct_filtered(i).fluo = ft;
-        trace_struct_filtered(i).time = tt;
-        if length(trace_struct_filtered(i).fluo) < 5
+        ft = trace_struct_filtered(i).fluo_inf;
+        tt = trace_struct_filtered(i).time_inf;
+        ft = ft(1:end-w-1);
+        tt = tt(1:end-w-1);
+        trace_struct_filtered(i).fluo_inf = ft;
+        trace_struct_filtered(i).time_inf = tt;
+        if length(trace_struct_filtered(i).fluo_inf) < 5
             rm_indices = [rm_indices i];
         end
     end
@@ -133,12 +144,11 @@ set_vec = unique(set_index);
 if set_bootstrap
     n_bootstrap = length(set_vec);
 end
-stripe_ref_vec = round([trace_struct_filtered.stripe_id_inf],1);
 first_time_vec = [];
 last_time_vec = [];
 for i = 1:length(trace_struct_filtered)
-    first_time_vec = [first_time_vec min(trace_struct_filtered(i).time_interp)];
-    last_time_vec = [last_time_vec max(trace_struct_filtered(i).time_interp)];
+    first_time_vec = [first_time_vec min(trace_struct_filtered(i).time_inf)];
+    last_time_vec = [last_time_vec max(trace_struct_filtered(i).time_inf)];
 end
 %% Conduct Inference
 % structure array to store the analysis data
@@ -175,27 +185,41 @@ for K = state_vec
                 % Initialize logL to - infinity
                 logL_max = -Inf;
                 % Extract fluo_data
-                trace_filter = ismember(stripe_ref_vec,bin_list) & (last_time_vec-5*60) > t_start ...
+                temp_filter = (last_time_vec-5*60) > t_start ...
                         & (first_time_vec+5*60) <= t_stop;
+                stripe_id_vec = NaN(1,length(temp_filter));
+                for m = 1:length(trace_struct_filtered)
+                    if temp_filter(m)==1
+                        tt = trace_struct_filtered(m).time_orig;
+                        ft = trace_struct_filtered(m).fluo_orig;
+                        tt = tt(~isnan(ft));
+                        time_filter = tt>=t_start & tt < t_stop;
+                        stripe_id_vec(m) = round(mode(trace_struct_filtered(m).stripe_id_vec(time_filter)),1);
+                    end
+                end                
+                trace_filter = ismember(stripe_id_vec,bin_list);
+%                 error('asfa')
                 if set_bootstrap
                     trace_ind = find(([trace_struct_filtered.setID]~=boot_set)&...
                         trace_filter);
                 else
                     trace_ind = find(trace_filter);
                 end
+                % generate structure containing only elligible trace
+                % fragments
                 inference_set = [];
                 for m = 1:length(trace_ind)
                     temp = trace_struct_filtered(trace_ind(m));
-                    tt = temp.time;
-                    ft = temp.fluo;
-                    temp.time = tt(tt>=t_start & tt < t_stop);
-                    temp.fluo = ft(tt>=t_start & tt < t_stop);
+                    tt = temp.time_inf;
+                    ft = temp.fluo_inf;
+                    temp.time_inf = tt(tt>=t_start & tt < t_stop);
+                    temp.fluo_inf = ft(tt>=t_start & tt < t_stop);
                     inference_set = [inference_set temp];
                 end
                 if isempty(inference_set)
                     skip_flag = 1;
                 else
-                    set_size = length([inference_set.time]);
+                    set_size = length([inference_set.time_inf]);
                     if set_size < min_dp_per_inf
                         skip_flag = 1;
                     else
@@ -206,6 +230,8 @@ for K = state_vec
                     warning('Too few data points. Skipping')                
                 else 
                     sample_index = 1:length(inference_set);
+                    particle_id_list = [];
+                    particle_time_cell = {};
                     if dp_bootstrap                        
                         ndp = 0;    
                         sample_ids = [];                    
@@ -216,19 +242,26 @@ for K = state_vec
                         while ndp < sample_size
                             tr_id = randsample(sample_index,1);
                             sample_ids = [sample_ids tr_id];
-                            ndp = ndp + length(inference_set(tr_id).time);
+                            particle_id_list = [particle_id_list inference_set(tr_id).ParticleID];
+                            particle_time_cell = [particle_time_cell{:} {inference_set(tr_id).time_inf}];
+                            ndp = ndp + length(inference_set(tr_id).time_inf);
                         end
                         fluo_data = cell([length(sample_ids), 1]);                
                         sample_particles = [inference_set(sample_ids).ParticleID];
                         for tr = 1:length(sample_ids)
-                            fluo_data{tr} = inference_set(sample_ids(tr)).fluo;                    
+                            fluo_data{tr} = inference_set(sample_ids(tr)).fluo_inf;                    
                         end            
                     else % Take all relevant traces if not bootstrapping
                         fluo_data = cell([length(trace_ind), 1]);            
+                        particle_id_list = [];
+                        particle_time_cell = {};
                         for tr = 1:length(trace_ind)
-                            fluo_data{tr} = inference_set(tr).fluo;
+                            fluo_data{tr} = inference_set(tr).fluo_inf;
+                            particle_id_list = [particle_id_list inference_set(tr),ParticleID];
+                            particle_time_cell = [particle_time_cell{:} {inference_set(tr_id).time_inf}];
                         end
-                    end
+                    end                 
+%                     error('asfa')
                     % Random initialization of model parameters
                     param_init = initialize_random (K, w, fluo_data);
                     % Approximate inference assuming iid data for param initialization                
@@ -291,7 +324,7 @@ for K = state_vec
                     output.total_steps = local_struct(max_index).total_steps;                                  
                     output.total_time = 100000*(now - iter_start);            
                     % Save inference ID variables
-                    output.APbin = min(bin_list):max(bin_list);
+                    output.stripe_id = min(bin_list):max(bin_list);
                     output.boot_set = NaN;
                     if set_bootstrap
                         output.boot_set = boot_set;
@@ -305,15 +338,18 @@ for K = state_vec
                     output.start_time_inf = 0;
                     output.stop_time_inf = stop_time_inf;                            
                     output.clipped = clipped;
-                    if dp_bootstrap
-                        output.traces = sample_ids;    
-                        output.particle_ids = [trace_struct_filtered(sample_ids).ParticleID];
+                    if dp_bootstrap || set_bootstrap
+%                         output.traces = sample_ids;    
+                        output.particle_ids = particle_id_list;
+                        output.particle_times = particle_time_cell;
+                        output.traces = fluo_data;
                         output.N = ndp;
                     end
                     % Other inference characteristics            
                     output.w = w;
                     output.alpha = alpha;
                     output.deltaT = Tres;  
+                    output.dynamic_bins = 1;
                 end
                 output.skip_flag = skip_flag;
     %             output.inference_traces = fluo_data;
