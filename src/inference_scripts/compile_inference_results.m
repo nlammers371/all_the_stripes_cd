@@ -10,10 +10,18 @@ alpha = 1.4; % MS2 rise time in time steps
 fluo_type = 1; % type of spot integration used
 clipped = 1; % if 0, traces are taken to be full length of nc14
 stop_time_inf = 60;
-no_ends_flag = 1;
+clipped_ends = 1;
+dynamic_bins = 1; % if 1, use time-resolved region classifications
 %-----------------------------ID Variables--------------------------------%
-bin_range = [1.9,2,2.1,2.9,3,3.1,3.9,4,4.1,4.9,5,5.1,5.9,6,6.1,6.9,7,7.1]; %set AP bin range
 stripe_range = 1:7;
+bin_range = [];
+for i = 1:length(stripe_range)
+    for j = 1:3
+        bin_range = stripe_range(i) - j/3 + 2/3;
+    end
+end
+
+    
 x_labels = {};
 for i = 1:length(stripe_range)
     x_labels = [x_labels{:} {['stripe ' num2str(i) ' (A)']} {['stripe ' num2str(i) ' (C)']}...
@@ -31,7 +39,7 @@ plot_scatters = 0; %If 1 plot single bootstrap results
 %Generate filenames and writepath
 % truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
 id_string = [ 'truncated_inference_w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
-    '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(no_ends_flag) '/' inference_type '/']; 
+    '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/' inference_type '/']; 
 % DropboxFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\hmmm_data\inference_out\';
 DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
 folder_path =  [DropboxFolder '/' project '/' id_string];
@@ -61,7 +69,7 @@ f_pass = 1;
 for f = 1:length(filenames)
     % load the eve validation results into a structure array 'output'    
     load([folder_path filenames{f}]);
-    if output.skip_flag == 1
+    if output.skip_flag == 1 
         continue
     end
     for fn = fieldnames(output)'
@@ -79,13 +87,6 @@ end
 %Define convenience Arrays and vectors
 alpha = glb_all(1).alpha;
 bin_vec = [glb_all.stripe_id];
-for b = 1:length(bin_vec)
-    if floor(bin_vec(b)) < round(bin_vec(b))
-        bin_vec(b) = floor(bin_vec(b))+2/3;
-    elseif ceil(bin_vec(b)) > round(bin_vec(b))
-        bin_vec(b) = floor(bin_vec(b))+1/3;
-    end
-end
 bin_range = unique(bin_vec);
 time_vec = [glb_all.t_inf];
 time_index = unique(time_vec);
@@ -230,7 +231,7 @@ for i = 1:length(bin_range)
         hmm_results(ind).dT = Tres;
         hmm_results(ind).fluo_type = fluo_type; 
         hmm_results(ind).clipped = clipped; 
-        hmm_results(ind).clipped = no_ends_flag; 
+        hmm_results(ind).clipped = clipped_ends; 
     end
 end
 save([OutPath '/hmm_results_mem' num2str(w)  '_states' num2str(K)  '.mat'],'hmm_results')
