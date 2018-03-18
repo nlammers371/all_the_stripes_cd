@@ -12,14 +12,16 @@ clipped = 1; % if 0, traces are taken to be full length of nc14
 stop_time_inf = 60;
 clipped_ends = 1;
 dynamic_bins = 1; % if 1, use time-resolved region classifications
+t_window = 15; % size of sliding window used
 %-----------------------------ID Variables--------------------------------%
 stripe_range = 1:7;
-bin_range = [];
+bin_range_vec = [];
 for i = 1:length(stripe_range)
     for j = 1:3
-        bin_range = stripe_range(i) - j/3 + 2/3;
+        bin_range_vec = stripe_range(i) - j/3 + 2/3;
     end
 end
+bin_range_vec = [0 bin_range_vec];
     
 x_labels = {};
 for i = 1:length(stripe_range)
@@ -29,18 +31,17 @@ end
 
 % id variables
 datatype = 'weka';
-inference_type = 'set_bootstrap_results';
+inference_type = 'dp_bootstrap_results';
 project = 'eve7stripes_inf_2018_02_20'; %project identifier
-MarkerSize = 40; %Set size of markers for plots
-plot_orig_rates = 0; %If 1 plot original rates (prior to fitting)
-plot_scatters = 0; %If 1 plot single bootstrap results
+
 
 %Generate filenames and writepath
 % truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
 id_string = [ 'truncated_inference_w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
     '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/' inference_type '/']; 
-DropboxFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve7stripes_data\inference_out\';
-% DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+% DropboxFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\hmmm_data\inference_out\';
+DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+
 folder_path =  [DropboxFolder '/' project '/' id_string];
 OutPath = ['../../dat/' project '/' id_string];
 FigPath = ['../../fig/experimental_system/' project '/' id_string];
@@ -61,18 +62,21 @@ if isempty(filenames)
 end
 
 x_grid_plot = (2:22)/3;
-
+temp_path = [DropboxFolder '/' project '/truncated_inference_w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
+    '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/'];
 %Iterate through result sets and concatenate into 1 combined struct
 glb_all = struct;
 f_pass = 1;
 for f = 1:length(filenames)
     % load the eve validation results into a structure array 'output'    
-    load([folder_path filenames{f}]);
+    load([folder_path filenames{f}]);    
     if output.skip_flag == 1 
         continue
-    elseif output.t_window ~= 1800
-        continue
-    end
+    end    
+    t_window = output.t_window;
+    outpath = [temp_path '/t_window' num2str(round(t_window/60)) '/' inference_type '/'];
+    mkdir(outpath)
+    save([outpath filenames{f}])
     for fn = fieldnames(output)'
         glb_all(f_pass).(fn{1}) = output.(fn{1});
     end
@@ -82,13 +86,14 @@ for f = 1:length(filenames)
 %         warning(['File ' num2str(f) ' failed to load'])
 %     end
 end
+
 %%
 %%% ------------------------------Fig Calculations-------------------------%
 %Adjust rates as needed (address negative off-diagonal values)
 %Define convenience Arrays and vectors
 alpha = glb_all(1).alpha;
 bin_vec = [glb_all.stripe_id];
-bin_range = unique(bin_vec);
+bin_range_vec = unique(bin_vec);
 time_vec = [glb_all.t_inf];
 time_index = unique(time_vec);
 initiation_rates = zeros(K,length(glb_all)); % r
@@ -141,15 +146,15 @@ for i = 1:length(glb_all)
 end
 
 % 2D Arrays to store moments (A's are calculated to have for output structure)
-avg_R_orig = zeros(length(time_index),K^2,length(bin_range));
-std_R_orig = zeros(length(time_index),K^2,length(bin_range));
-avg_A = zeros(length(time_index),K^2,length(bin_range));
-std_A = zeros(length(time_index),K^2,length(bin_range));
-avg_R_fit = zeros(length(time_index),K^2,length(bin_range));
-std_R_fit = zeros(length(time_index),K^2,length(bin_range));
+avg_R_orig = zeros(length(time_index),K^2,length(bin_range_vec));
+std_R_orig = zeros(length(time_index),K^2,length(bin_range_vec));
+avg_A = zeros(length(time_index),K^2,length(bin_range_vec));
+std_A = zeros(length(time_index),K^2,length(bin_range_vec));
+avg_R_fit = zeros(length(time_index),K^2,length(bin_range_vec));
+std_R_fit = zeros(length(time_index),K^2,length(bin_range_vec));
 
-for b = 1:length(bin_range)
-    bin = bin_range(b);
+for b = 1:length(bin_range_vec)
+    bin = bin_range_vec(b);
     for t = 1:length(time_index)
         time = time_index(t);
         A_mean = mean(A_array(bin_vec==bin&time_vec==time,:),1);
@@ -176,18 +181,18 @@ for i = 1:length(glb_all)
     occupancy(:,i) = steady;
     glb_all(i).occupancy = steady;
 end
-avg_dwell = NaN(K,length(bin_range),length(time_index));
-std_dwell = NaN(K,length(bin_range),length(time_index));
-avg_initiation = NaN(K,length(bin_range),length(time_index));
-std_initiation = NaN(K,length(bin_range),length(time_index));
-avg_occupancy = NaN(K,length(bin_range),length(time_index));
-std_occupancy = NaN(K,length(bin_range),length(time_index));
-avg_pi0 = NaN(K,length(bin_range),length(time_index));
-std_pi0 = NaN(K,length(bin_range),length(time_index));
-avg_noise = NaN(1,length(bin_range),length(time_index));
-std_noise = NaN(1,length(bin_range),length(time_index));
-for i = 1:length(bin_range)
-    bin = bin_range(i);
+avg_dwell = NaN(K,length(bin_range_vec),length(time_index));
+std_dwell = NaN(K,length(bin_range_vec),length(time_index));
+avg_initiation = NaN(K,length(bin_range_vec),length(time_index));
+std_initiation = NaN(K,length(bin_range_vec),length(time_index));
+avg_occupancy = NaN(K,length(bin_range_vec),length(time_index));
+std_occupancy = NaN(K,length(bin_range_vec),length(time_index));
+avg_pi0 = NaN(K,length(bin_range_vec),length(time_index));
+std_pi0 = NaN(K,length(bin_range_vec),length(time_index));
+avg_noise = NaN(1,length(bin_range_vec),length(time_index));
+std_noise = NaN(1,length(bin_range_vec),length(time_index));
+for i = 1:length(bin_range_vec)
+    bin = bin_range_vec(i);
     for t = 1:length(time_index)
         time = time_index(t);
         for k = 1:K
@@ -207,7 +212,7 @@ end
 
 %%% Make Output Struct With Relevant Fields
 hmm_results = struct;
-for i = 1:length(bin_range)
+for i = 1:length(bin_range_vec)
     for t = 1:length(time_index)
         ind = (i-1)*length(time_index) + t;
 %         hmm_results(ind).N = bin_counts(i);
@@ -226,7 +231,7 @@ for i = 1:length(bin_range)
         hmm_results(ind).R_fit_std = std_R_fit(t,:,i);
         hmm_results(ind).noise_mean = avg_noise(i,t);
         hmm_results(ind).noise_std = std_noise(i,t);
-        hmm_results(ind).binID = bin_range(i);
+        hmm_results(ind).binID = bin_range_vec(i);
         hmm_results(ind).t_inf = time_index(t);
         hmm_results(ind).alpha = alpha;
         hmm_results(ind).dT = Tres;
@@ -235,10 +240,10 @@ for i = 1:length(bin_range)
         hmm_results(ind).clipped = clipped_ends; 
     end
 end
-save([OutPath '/hmm_results_mem' num2str(w)  '_states' num2str(K)  '_ss.mat'],'hmm_results')
+save([OutPath '/hmm_results_mem' num2str(w)  '_states' num2str(K)  '.mat'],'hmm_results')
 %%
 %%% Make HMM Result Summary Figures
-plot_times = time_index([1]);
+plot_times = time_index([2,4,6,8]);
 close all
 % make sub-directory for HMM plots
 hmmPath = [FigPath '/hmm_figs/'];
@@ -252,7 +257,8 @@ for k = 1:K
         color_pallette(k,:,t) = cm((k-1)*increment + (t-1)*sub_inc + 1,:);
     end
 end
-title_string = {'Mean Rate of Activation','Mean Rate of De-Activation'};
+
+
 for j = 1:K
     rate_fig = figure;
     hold on    
@@ -261,7 +267,7 @@ for j = 1:K
     for k = 1:(K-1)
         for t = 1:length(plot_times)
             col = sub2ind([K,K],index(k),j);    
-            e = errorbar(bin_range,reshape(avg_R_fit(time_index==plot_times(t),col,:),1,[]),...
+            e = errorbar(bin_range_vec,reshape(avg_R_fit(time_index==plot_times(t),col,:),1,[]),...
                 reshape(std_R_fit(time_index==plot_times(t),col,:),1,[]),'LineWidth',1,'Color','black');        
             e.CapSize = 0;
             if plot_scatters
@@ -274,7 +280,7 @@ for j = 1:K
     for k = 1:(K-1)        
         for t = 1:length(plot_times)
             r_fit = reshape(avg_R_fit(time_index==plot_times(t),col,:),1,[]);        
-            plot(bin_range, r_fit,'black','LineWidth',1);  
+            plot(bin_range_vec, r_fit,'black','LineWidth',1);  
         end
     end
     legend_cell = {};          
@@ -282,17 +288,16 @@ for j = 1:K
     for k = 1:(K-1)        
         for t = 1:length(plot_times)
             legend_cell = {legend_cell{:} ['To ' num2str(index(k)) ' (t=' num2str(round(plot_times(t)/60)) ')']};        
-            s = [s scatter(bin_range, reshape(avg_R_fit(time_index==plot_times(t),col,:),1,[]),...
+            s = [s scatter(bin_range_vec, reshape(avg_R_fit(time_index==plot_times(t),col,:),1,[]),...
                 MarkerSize, color_pallette(index(k),:,t), 'o', 'filled', 'MarkerEdgeColor', 'black')];
         end
     end  
-%     legend(s,legend_cell{:},'Location','southeast')
+    legend(s,legend_cell{:},'Location','southeast')
 %     axis([min(bin_range)-1 max(bin_range) + 1 0 max(max(max(R_fit_array(index,j,:))))*1.05]);
-    title(title_string{j}); 
+    title(['Outflow Rates from State ' num2str(j)]); 
     xlabel('stripe')
     ylabel('events per minute') 
-    axis([0 8 0 1.1*max(max(avg_R_fit(:,col,:)))])
-    grid on
+    axis([0 8 0 max(max(avg_R_fit(:,col,:)))])
     set(gca,'xtick',1:7,'xticklabel',1:7)
     saveas(rate_fig, [hmmPath '/rates_from' num2str(j) '.png'], 'png');
     saveas(rate_fig, [hmmPath '/rates_from' num2str(j) '.pdf'], 'pdf');
@@ -309,18 +314,17 @@ hold on
 % end
 for k = 1:K
     for t = 1:length(plot_times)
-        e = errorbar(bin_range, avg_initiation(k,:,time_index==plot_times(t)),std_initiation(k,:,time_index==plot_times(t))...
+        e = errorbar(bin_range_vec, avg_initiation(k,:,time_index==plot_times(t)),std_initiation(k,:,time_index==plot_times(t))...
             ,'LineWidth',1,'Color','black');
         e.CapSize = 0;
-        scatter(bin_range, avg_initiation(k,:,time_index==plot_times(t)), MarkerSize, color_pallette(k,:,t),...
+        scatter(bin_range_vec, avg_initiation(k,:,time_index==plot_times(t)), MarkerSize, color_pallette(k,:,t),...
             'o','filled', 'MarkerEdgeColor', 'black') ;
     end
 end
-axis([(min(bin_range)-1) (max(bin_range)+1) 0 1.1*max(initiation_rates(:))])
+axis([(min(bin_range_vec)-1) (max(bin_range_vec)+1) 0 1.1*max(initiation_rates(:))])
 title('Initiation Rate');
 xlabel('stripe');
-ylabel('Mean Initiation Rate (A.U per minute)');
-grid on
+ylabel('Initiation Rate (A.U per minute)');
 set(gca,'xtick',1:7,'xticklabel',1:7)
 saveas(init_fig, [hmmPath '/initiation_rates.png'], 'png');
 saveas(init_fig, [hmmPath '/initition_rates.pdf'], 'pdf');
@@ -331,18 +335,17 @@ hold on
 
 for k = 1:K
     for t = 1:length(plot_times)
-        e = errorbar(bin_range, avg_occupancy(k,:,time_index==plot_times(t)),...
+        e = errorbar(bin_range_vec, avg_occupancy(k,:,time_index==plot_times(t)),...
             std_occupancy(k,:,time_index==plot_times(t)),'LineWidth',1,'Color','black');
         e.CapSize = 0;
-        scatter(bin_range, avg_occupancy(k,:,time_index==plot_times(t)), MarkerSize, color_pallette(k,:,t),...
+        scatter(bin_range_vec, avg_occupancy(k,:,time_index==plot_times(t)), MarkerSize, color_pallette(k,:,t),...
             'o','filled', 'MarkerEdgeColor', 'black') ;
     end
 end
-axis([(min(bin_range)-1) (max(bin_range)+1) 0 1.2*max(max(occupancy))])
+axis([(min(bin_range_vec)-1) (max(bin_range_vec)+1) 0 1.2*max(max(occupancy))])
 title('State Occupancy by AP Position');
 ylabel('Occupancy Share');
 xlabel('stripe');
-grid on
 set(gca,'xtick',1:7,'xticklabel',1:7)
 saveas(occ_fig, [hmmPath '/occupancy_trends.png'], 'png');
 saveas(occ_fig, [hmmPath '/occupancy_trends.pdf'], 'pdf');
@@ -352,22 +355,21 @@ dwell_fig = figure;
 hold on
 if plot_scatters
     for k = 1:K
-        scatter(bin_vec, dwell_all(k,:),MarkerSize,color_pallette(k,:,t),'s',...
+        scatter(bin_vec, dwell_all(k,:),MarkerSize,color_cell{k},'s',...
             'filled', 'MarkerFaceAlpha',.2,'MarkerEdgeAlpha',0);
     end
 end
 for k = 1:K
-    e = errorbar(bin_range, avg_dwell(k,:),std_dwell(k,:),'LineWidth',1,'Color','black');
+    e = errorbar(bin_range_vec, avg_dwell(k,:),std_dwell(k,:),'LineWidth',1,'Color','black');
     e.CapSize = 0;
-    scatter(bin_range, avg_dwell(k,:), MarkerSize, color_cell{k},...
+    scatter(bin_range_vec, avg_dwell(k,:), MarkerSize, color_cell{k},...
         'o','filled', 'MarkerEdgeColor', 'black') ;
 end
-axis([(min(bin_range)-1) (max(bin_range)+1) 0 1.2*max(avg_dwell(:))])
+axis([(min(bin_range_vec)-1) (max(bin_range_vec)+1) 0 1.2*max(avg_dwell(:))])
 title('Dwell Times by AP Position');
 ylabel('Dwell Times (min)');
 xlabel('relative AP position (%)');
-grid on
-set(gca,'xtick',bin_range,'xticklabel',x_labels)
+set(gca,'xtick',bin_range_vec,'xticklabel',x_labels)
 saveas(dwell_fig, [hmmPath '/dwell_time_trends.png'], 'png');
 saveas(dwell_fig, [hmmPath '/dwell_time_trends.pdf'], 'pdf');
 
@@ -378,16 +380,16 @@ if plot_scatters
     scatter(bin_vec, noise_all,MarkerSize,[.3 .3 .3],'s',...
             'filled', 'MarkerFaceAlpha',.2,'MarkerEdgeAlpha',0);    
 end
-e = errorbar(bin_range, avg_noise,std_noise,'LineWidth',1,'Color',[.3 .3 .3]);
+e = errorbar(bin_range_vec, avg_noise,std_noise,'LineWidth',1,'Color',[.3 .3 .3]);
 e.CapSize = 0;
-scatter(bin_range, avg_noise, MarkerSize, [.3 .3 .3],...
+scatter(bin_range_vec, avg_noise, MarkerSize, [.3 .3 .3],...
     'o','filled', 'MarkerEdgeColor', 'black') ;
 
-axis([(min(bin_range)-1) (max(bin_range)+1) 0 1.2*max(avg_noise(:))])
+axis([(min(bin_range_vec)-1) (max(bin_range_vec)+1) 0 1.2*max(avg_noise(:))])
 title('Estimated Noise by AP Position');
 ylabel('Noise (AU)');
 xlabel('relative AP position (%)');
-set(gca,'xtick',bin_range,'xticklabel',x_labels)
+set(gca,'xtick',bin_range_vec,'xticklabel',x_labels)
 saveas(noise_fig, [hmmPath '/noise_trends.png'], 'png');
 saveas(noise_fig, [hmmPath '/noise_trends.pdf'], 'pdf');
 

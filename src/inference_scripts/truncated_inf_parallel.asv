@@ -47,7 +47,7 @@ n_steps_max = 500; % set max steps per inference
 eps = 10e-4; % set convergence criteria
 
 %----------------------------Bootstrap Vars-------------------------------%
-dp_bootstrap = 1;
+dp_bootstrap = 0;
 set_bootstrap = 1;
 n_bootstrap = 5;
 sample_size = 4000;
@@ -66,7 +66,7 @@ binIndex = unique([trace_struct_final.stripe_id_inf]); % Position index
 % Set write path (inference results are now written to external directory)
 out_suffix =  ['/' project '/truncated_inference_w' num2str(w) '_t' num2str(Tres)...
     '_alpha' num2str(round(alpha*10)) '_f' num2str(fluo_field) '_cl' num2str(clipped) ...
-    '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/']; 
+    '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/t_window' num2str(round(t_window/60)) '/']; 
 if savio
     out_prefix = '/global/scratch/nlammers/eve7stripes_data/inference_out/';
 else    
@@ -243,7 +243,7 @@ for K = state_vec
                             tr_id = randsample(sample_index,1);
                             sample_ids = [sample_ids tr_id];
                             particle_id_list = [particle_id_list inference_set(tr_id).ParticleID];
-                            particle_time_cell = [particle_time_cell{:} inference_set(tr_id).time_in
+                            particle_time_cell = [particle_time_cell{:} {inference_set(tr_id).time_inf}];
                             ndp = ndp + length(inference_set(tr_id).time_inf);
                         end
                         fluo_data = cell([length(sample_ids), 1]);                
@@ -254,11 +254,14 @@ for K = state_vec
                     else % Take all relevant traces if not bootstrapping
                         fluo_data = cell([length(trace_ind), 1]);            
                         particle_id_list = [];
+                        particle_time_cell = {};
                         for tr = 1:length(trace_ind)
                             fluo_data{tr} = inference_set(tr).fluo_inf;
                             particle_id_list = [particle_id_list inference_set(tr),ParticleID];
+                            particle_time_cell = [particle_time_cell{:} {inference_set(tr_id).time_inf}];
                         end
-                    end                    
+                    end                 
+%                     error('asfa')
                     % Random initialization of model parameters
                     param_init = initialize_random (K, w, fluo_data);
                     % Approximate inference assuming iid data for param initialization                
@@ -336,8 +339,10 @@ for K = state_vec
                     output.stop_time_inf = stop_time_inf;                            
                     output.clipped = clipped;
                     if dp_bootstrap || set_bootstrap
-                        output.traces = sample_ids;    
+%                         output.traces = sample_ids;    
                         output.particle_ids = particle_id_list;
+                        output.particle_times = particle_time_cell;
+                        output.traces = fluo_data;
                         output.N = ndp;
                     end
                     % Other inference characteristics            
