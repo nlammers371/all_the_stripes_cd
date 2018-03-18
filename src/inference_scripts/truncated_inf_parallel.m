@@ -47,7 +47,7 @@ n_steps_max = 500; % set max steps per inference
 eps = 10e-4; % set convergence criteria
 
 %----------------------------Bootstrap Vars-------------------------------%
-dp_bootstrap = 1;
+dp_bootstrap = 0;
 set_bootstrap = 1;
 n_bootstrap = 5;
 sample_size = 4000;
@@ -66,7 +66,7 @@ binIndex = unique([trace_struct_final.stripe_id_inf]); % Position index
 % Set write path (inference results are now written to external directory)
 out_suffix =  ['/' project '/truncated_inference_w' num2str(w) '_t' num2str(Tres)...
     '_alpha' num2str(round(alpha*10)) '_f' num2str(fluo_field) '_cl' num2str(clipped) ...
-    '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/']; 
+    '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/t_window' num2str(round(t_window/60)) '/']; 
 if savio
     out_prefix = '/global/scratch/nlammers/eve7stripes_data/inference_out/';
 else    

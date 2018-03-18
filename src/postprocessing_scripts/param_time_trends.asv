@@ -12,7 +12,6 @@ clipped = 1; % if 0, traces are taken to be full length of nc14
 stop_time_inf = 60;
 no_ends_flag = 1;
 dynamic_bins = 1; % if 1, use time-resolved region classifications
-t_window = 15;
 %-----------------------------ID Variables--------------------------------%
 
 % id variables
@@ -26,8 +25,7 @@ plot_scatters = 0; %If 1 plot single bootstrap results
 %Generate filenames and writepath
 % truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
 id_string = [ 'truncated_inference_w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
-    '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) ...
-    '_tbins' num2str(dynamic_bins) '/t_window' num2str(t_window) '/' inference_type '/']; 
+    '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/' inference_type '/']; 
 
 ReadPath = ['../../dat/' project '/' id_string];
 FigPath = ['../../fig/experimental_system/' project '/' id_string];
@@ -59,8 +57,6 @@ for i = 1:length(inf_times)
         off_mat_ste(i,j) = [hmm_results(t_vec==inf_times(i)&region_vec==inf_regions(j)).R_fit_std(3)];
     end
 end
-r_mat_ste = r_mat_ste / max(r_mat_mean(:));
-r_mat_mean = r_mat_mean / max(r_mat_mean(:));
 %% Make Scatter Figs   
 ls = {};
 for i = 1:7
@@ -95,12 +91,12 @@ for i = 1:3
     e = errorbar(inf_times/60,reshape(r_mat_mean(:,1),1,[]),...
             reshape(r_mat_ste(:,1),1,[]),'Color','black');
     e.CapSize = 0;
-    s = [s scatter(inf_times/60,reshape(r_mat_mean(:,1),1,[]),50,'s',...
+    s = [s scatter(inf_times/60,reshape(r_mat_mean(:,1),1,[]),...
             'MarkerFaceColor',[.3 .3 .3], 'MarkerEdgeColor', 'black')];
        
     legend(s,ls{:},'Location','southwest')
     xlabel('minutes into nc14')
-    ylabel('normalized mRNA per second')
+    ylabel('AU per second')
     axis([5 50 0 1.1*max(r_mat_mean(:))])
     title(['Estimated Initiation Rate (' title_cell{i} ')'])    
     saveas(r_scatter,[s_path '/r_scatter_' save_cell{i} '.png'],'png')
@@ -116,7 +112,12 @@ for i = 1:3
     hold on
 %     h = colorbar;
 %     set(h,'YTick',1:7)
-    s = [];       
+    s = [];    
+    e = errorbar(inf_times/60,reshape(r_mat_mean(:,1),1,[]),...
+            reshape(r_mat_ste(:,1),1,[]),'Color','black');
+    e.CapSize = 0;
+    s = [s scatter(inf_times/60,reshape(r_mat_mean(:,1),1,[]),...
+            'MarkerFaceColor',[.3 .3 .3], 'MarkerEdgeColor', 'black')];
     for j = 1:7
         e = errorbar(inf_times/60,reshape(on_mat_mean(:,ref_vec==(3*j-(2-i))),1,[]),...
             reshape(on_mat_ste(:,ref_vec==(3*j-(2-i))),1,[]),'Color','black');
@@ -124,11 +125,6 @@ for i = 1:3
         s = [s scatter(inf_times/60,reshape(on_mat_mean(:,ref_vec==(3*j-(2-i))),1,[]),...
             'MarkerFaceColor',cm((j-1)*inc+1,:), 'MarkerEdgeColor', 'black')];        
     end
-    e = errorbar(inf_times/60,reshape(on_mat_mean(:,1),1,[]),...
-            reshape(on_mat_ste(:,1),1,[]),'Color','black');
-    e.CapSize = 0;
-    s = [s scatter(inf_times/60,reshape(on_mat_mean(:,1),1,[]),50,'s',...
-            'MarkerFaceColor',[.3 .3 .3], 'MarkerEdgeColor', 'black')];
        
     legend(s,ls{:},'Location','northwest')
     xlabel('minutes into nc14')
@@ -148,6 +144,11 @@ for i = 1:3
 %     h = colorbar;
 %     set(h,'YTick',1:7)
     s = [];
+    e = errorbar(inf_times/60,reshape(r_mat_mean(:,1),1,[]),...
+            reshape(r_mat_ste(:,1),1,[]),'Color','black');
+    e.CapSize = 0;
+    s = [s scatter(inf_times/60,reshape(r_mat_mean(:,1),1,[]),...
+            'MarkerFaceColor',[.3 .3 .3], 'MarkerEdgeColor', 'black')];
     for j = 1:7
         e = errorbar(inf_times/60,reshape(off_mat_mean(:,ref_vec==(3*j-(2-i))),1,[]),...
             reshape(off_mat_ste(:,ref_vec==(3*j-(2-i))),1,[]),'Color','black');
@@ -155,11 +156,7 @@ for i = 1:3
         s = [s scatter(inf_times/60,reshape(off_mat_mean(:,ref_vec==(3*j-(2-i))),1,[]),...
             'MarkerFaceColor',cm((j-1)*inc+1,:), 'MarkerEdgeColor', 'black')];
     end
-    e = errorbar(inf_times/60,reshape(off_mat_mean(:,1),1,[]),...
-            reshape(off_mat_ste(:,1),1,[]),'Color','black');
-    e.CapSize = 0;
-    s = [s scatter(inf_times/60,reshape(off_mat_mean(:,1),1,[]),50,'s',...
-            'MarkerFaceColor',[.3 .3 .3], 'MarkerEdgeColor', 'black')];
+       
     legend(s,ls{:},'Location','southwest')
     xlabel('minutes into nc14')
     ylabel('switching rate (min^{-1})')
