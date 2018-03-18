@@ -20,7 +20,6 @@ for i = 1:length(stripe_range)
         bin_range = stripe_range(i) - j/3 + 2/3;
     end
 end
-
     
 x_labels = {};
 for i = 1:length(stripe_range)
@@ -30,7 +29,7 @@ end
 
 % id variables
 datatype = 'weka';
-inference_type = 'dp_bootstrap_results';
+inference_type = 'set_bootstrap_results';
 project = 'eve7stripes_inf_2018_02_20'; %project identifier
 MarkerSize = 40; %Set size of markers for plots
 plot_orig_rates = 0; %If 1 plot original rates (prior to fitting)
@@ -40,8 +39,8 @@ plot_scatters = 0; %If 1 plot single bootstrap results
 % truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
 id_string = [ 'truncated_inference_w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
     '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/' inference_type '/']; 
-% DropboxFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\hmmm_data\inference_out\';
-DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+DropboxFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve7stripes_data\inference_out\';
+% DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
 folder_path =  [DropboxFolder '/' project '/' id_string];
 OutPath = ['../../dat/' project '/' id_string];
 FigPath = ['../../fig/experimental_system/' project '/' id_string];
@@ -70,6 +69,8 @@ for f = 1:length(filenames)
     % load the eve validation results into a structure array 'output'    
     load([folder_path filenames{f}]);
     if output.skip_flag == 1 
+        continue
+    elseif output.t_window ~= 1800
         continue
     end
     for fn = fieldnames(output)'
@@ -234,10 +235,10 @@ for i = 1:length(bin_range)
         hmm_results(ind).clipped = clipped_ends; 
     end
 end
-save([OutPath '/hmm_results_mem' num2str(w)  '_states' num2str(K)  '.mat'],'hmm_results')
+save([OutPath '/hmm_results_mem' num2str(w)  '_states' num2str(K)  '_ss.mat'],'hmm_results')
 %%
 %%% Make HMM Result Summary Figures
-plot_times = time_index([2,4,6,8]);
+plot_times = time_index([1]);
 close all
 % make sub-directory for HMM plots
 hmmPath = [FigPath '/hmm_figs/'];
@@ -251,8 +252,7 @@ for k = 1:K
         color_pallette(k,:,t) = cm((k-1)*increment + (t-1)*sub_inc + 1,:);
     end
 end
-
-
+title_string = {'Mean Rate of Activation','Mean Rate of De-Activation'};
 for j = 1:K
     rate_fig = figure;
     hold on    
@@ -286,12 +286,13 @@ for j = 1:K
                 MarkerSize, color_pallette(index(k),:,t), 'o', 'filled', 'MarkerEdgeColor', 'black')];
         end
     end  
-    legend(s,legend_cell{:},'Location','southeast')
+%     legend(s,legend_cell{:},'Location','southeast')
 %     axis([min(bin_range)-1 max(bin_range) + 1 0 max(max(max(R_fit_array(index,j,:))))*1.05]);
-    title(['Outflow Rates from State ' num2str(j)]); 
+    title(title_string{j}); 
     xlabel('stripe')
     ylabel('events per minute') 
-    axis([0 8 0 max(max(avg_R_fit(:,col,:)))])
+    axis([0 8 0 1.1*max(max(avg_R_fit(:,col,:)))])
+    grid on
     set(gca,'xtick',1:7,'xticklabel',1:7)
     saveas(rate_fig, [hmmPath '/rates_from' num2str(j) '.png'], 'png');
     saveas(rate_fig, [hmmPath '/rates_from' num2str(j) '.pdf'], 'pdf');
@@ -318,7 +319,8 @@ end
 axis([(min(bin_range)-1) (max(bin_range)+1) 0 1.1*max(initiation_rates(:))])
 title('Initiation Rate');
 xlabel('stripe');
-ylabel('Initiation Rate (A.U per minute)');
+ylabel('Mean Initiation Rate (A.U per minute)');
+grid on
 set(gca,'xtick',1:7,'xticklabel',1:7)
 saveas(init_fig, [hmmPath '/initiation_rates.png'], 'png');
 saveas(init_fig, [hmmPath '/initition_rates.pdf'], 'pdf');
@@ -340,6 +342,7 @@ axis([(min(bin_range)-1) (max(bin_range)+1) 0 1.2*max(max(occupancy))])
 title('State Occupancy by AP Position');
 ylabel('Occupancy Share');
 xlabel('stripe');
+grid on
 set(gca,'xtick',1:7,'xticklabel',1:7)
 saveas(occ_fig, [hmmPath '/occupancy_trends.png'], 'png');
 saveas(occ_fig, [hmmPath '/occupancy_trends.pdf'], 'pdf');
@@ -349,7 +352,7 @@ dwell_fig = figure;
 hold on
 if plot_scatters
     for k = 1:K
-        scatter(bin_vec, dwell_all(k,:),MarkerSize,color_cell{k},'s',...
+        scatter(bin_vec, dwell_all(k,:),MarkerSize,color_pallette(k,:,t),'s',...
             'filled', 'MarkerFaceAlpha',.2,'MarkerEdgeAlpha',0);
     end
 end
@@ -363,6 +366,7 @@ axis([(min(bin_range)-1) (max(bin_range)+1) 0 1.2*max(avg_dwell(:))])
 title('Dwell Times by AP Position');
 ylabel('Dwell Times (min)');
 xlabel('relative AP position (%)');
+grid on
 set(gca,'xtick',bin_range,'xticklabel',x_labels)
 saveas(dwell_fig, [hmmPath '/dwell_time_trends.png'], 'png');
 saveas(dwell_fig, [hmmPath '/dwell_time_trends.pdf'], 'pdf');
