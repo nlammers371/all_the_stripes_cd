@@ -1,8 +1,8 @@
 % Script to Conduct HMM Inference on Experimental Data
 close all
 clear all
-addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
-% addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
+% addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
+addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 savio = 0; % Specify whether inference is being conducted on Savio Cluster
 ap_ref_index = 1:7;
 ap_ref_index = reshape([ap_ref_index-1/3 ;ap_ref_index; ap_ref_index + 1/3],1,[]);
@@ -15,15 +15,15 @@ if savio
         bin_groups{i} = ap_ref_index(savio_groups{i});
     end
 else
-    bin_groups = {};
-    for i = 2:22
-        bin_groups = [bin_groups{:} {round(i/3,1)}];
-    end
-%     bin_groups = [];
+%     bin_groups = {};
 %     for i = 2:22
-%         bin_groups = [bin_groups round(i/3,1)];
+%         bin_groups = [bin_groups{:} {round(i/3,1)}];
 %     end
-%     bin_groups = {bin_groups};
+    bin_groups = [];
+    for i = 2:22
+        bin_groups = [bin_groups round(i/3,1)];
+    end
+    bin_groups = {bin_groups};
 end
 warning('off','all') %Shut off Warnings
 
@@ -35,8 +35,8 @@ stop_time_inf = 60; % Specify cut-off time for inference
 min_dp = 10; % min length of traces to include
 clipped = 1; % if 0 use "full" trace with leading and trailing 0's
 fluo_field = 1; % specify which fluo field to (1 or 3)
-inference_times = (10:5:45)*60;
-t_window = 15*60; % determines width of sliding window
+inference_times = 35*60;%(10:5:45)*60;
+t_window = 30*60; % determines width of sliding window
 clipped_ends = 1; % if one, remove final w time steps from traces
 dynamic_bins = 1; % if 1, use time-resolved region classifications
 %------------------Define Inference Variables------------------------------%
@@ -55,8 +55,8 @@ eps = 10e-4; % set convergence criteria
 %----------------------------Bootstrap Vars-------------------------------%
 dp_bootstrap = 1;
 set_bootstrap = 0;
-n_bootstrap = 5;
-sample_size = 4000;
+n_bootstrap = 10;
+sample_size = 10000;
 min_dp_per_inf = 1500; % inference will be aborted if fewer present
 %----------------------------Set Write Paths------------------------------%
 project = 'eve7stripes_inf_2018_02_20';
@@ -77,8 +77,8 @@ out_suffix =  ['/' project '/truncated_inference_w' num2str(w) '_t' num2str(Tres
 if savio
     out_prefix = '/global/scratch/nlammers/eve7stripes_data/inference_out/';
 else    
-    out_prefix = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
-%     out_prefix = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+%     out_prefix = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+    out_prefix = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
 end
 out_dir = [out_prefix out_suffix];
 mkdir(out_dir);

@@ -8,8 +8,8 @@ Tres_interp = 20;
 InterpGrid = 0:Tres_interp:60*50;
 FOV_edge_padding = 20; % pixels
 %------------------------Import Raw Trace Set------------------------%
-%ID's of sets to include
-project = 'eve7stripes_inf_2018_02_20';
+%ID's of sets to includeg
+project = 'eve7stripes_inf_2018_03_27';
 print_traces = 0; %Output PNG files for traces?
 
 %---------------------------Set Paths-------------------------------------%
@@ -33,10 +33,19 @@ set_index = unique([trace_struct.setID]);
 %%% Cleaning Parameters
 big_jump1 = prctile([trace_struct.fluo],99);
 jump_threshold1 = big_jump1/1.5; % this should be a conservative threshold for single time step increase
-big_jump3 = prctile([trace_struct.fluo3],99);
-jump_threshold3 = big_jump3/1.5; % this should be a conservative threshold for single time step increase
 index_vec = 1:length(trace_struct); % convenience ref vector
 field_names = fieldnames(trace_struct);
+%%% remove small set of duplicates
+rm_indices = [];
+particle_vec = [trace_struct.ParticleID];
+for p = 1:length(particle_vec)
+    pID = trace_struct(p).ParticleID;
+    matches = find(particle_vec == pID);
+    if length(matches) > 1
+        rm_indices = [rm_indices matches(2:end)];
+    end
+end
+trace_struct = trace_struct(~ismember(1:length(trace_struct),rm_indices));
 
 trace_struct_final = []; % Structure to store traces after first round of cleaning
 jump_ct = 0;
@@ -99,7 +108,7 @@ for i = 1:length(trace_struct)
     time_interp = t_start:Tres_interp:t_stop;
     trace1_interp = interp1(time,trace1,time_interp);
 %     trace3_interp = interp1(time,trace3,time_interp);
-    interp_fields = {'xPos','yPos','ap_vector'};
+    interp_fields = {'xPos','yPos','ap_vector','stripe_id_vec'};
     % interpolate other vector fields
     for j = 1:length(interp_fields)
         int_vec = temp.(interp_fields{j});
@@ -148,102 +157,98 @@ end
 
 %------------------------- Clean Ellipse Set -----------------------------%
 
-% padding = 10; % # frames at end or beginning of nc14 during which 
-% trace_particle_vec = [trace_struct_final.ParticleID];
-% 
-% nuclei_clean = [];
-% rm_counts = 0;
+padding = 10; % # frames at end or beginning of nc14 during which 
+trace_particle_vec = [trace_struct_final.ParticleID];
+
+nuclei_clean = [];
+rm_counts = 0;
 % pixel_per_ap_vec = unique([trace_struct_final.PixelperAP]);
-% set_vec = unique([trace_struct_final.setID]);
-% for i = 1:length(ellipse_struct)
-%     temp = ellipse_struct(i);
-%     setID = temp.setID;
-%     lt = last_times(set_index==setID);
-%     nc_times = temp.time;     
-%     if isempty(temp.inference_flag)
-%         temp.inference_flag = NaN;
-%         temp.on_time_flag = NaN;
-%         temp.off_time_flag = NaN;
-%     end
-%     temp.InterpGrid = InterpGrid;
-%     % interpolate relevant fields
-%     time = temp.time;
-%     frames = temp.frames;    
-%     t_start = InterpGrid(find(InterpGrid>=time(1),1));    
-%     t_stop = InterpGrid(find(InterpGrid<=time(end),1,'last'));
-%     time_interp = t_start:Tres_interp:t_stop;
-%     frames_interp = linspace(min(frames), max(frames), length(time_interp));
-%     tracking_flags = ismember(floor(frames_interp),frames);
-%     interp_fields = {'xPos','yPos'};
-%     for j = 1:length(interp_fields)
-%         int_vec = temp.(interp_fields{j});
-%         int_time = temp.time;
-%         interp = interp1(int_time,int_vec,time_interp);
-%         interp(~tracking_flags) = NaN;
-%         temp.([interp_fields{j} '_interp']) = interp;
-%     end
-%     FOV_flags = (temp.xPos_interp > FOV_edge_padding) & (temp.xPos_interp < 512- FOV_edge_padding)...
-%         &(temp.yPos_interp > FOV_edge_padding) & (temp.yPos_interp < 256 - FOV_edge_padding);    
-%     FOV_flags_all = zeros(size(InterpGrid));
-%     FOV_flags_all(ismember(InterpGrid,time_interp)) = 1;
-%     temp.FOV_flags = FOV_flags_all;
-%     temp.nc14_flag = time(end) >= time_ceiling && time(1) <= 360;
-%     temp.FOV_edge_padding = FOV_edge_padding;
-%     % flag nuclei that are usable for on time-off time analysis
-% %     temp.nc14_flag = min(nc_times) <= 240 && max(nc_times) >= lt-240 &&...
-% %         max(diff(temp.frames))==1;        
-%     ParticleID = temp.ParticleID;
-%     trace_ind = [];
-%     if ~isnan(ParticleID)
-%         trace_ind = find(trace_particle_vec==ParticleID);
-%         if isempty(trace_ind) % catch cases in which particle has been removed for QC reasons
-%             error('Inconsistent indexing between Trace and Nucelus Structures')
+set_vec = unique([trace_struct_final.setID]);
+for i = 1:length(schnitz_struct)
+    temp = schnitz_struct(i);
+    setID = temp.setID;
+    lt = last_times(set_index==setID);
+    nc_times = temp.time;     
+    
+    temp.InterpGrid = InterpGrid;
+    % interpolate relevant fields
+    time = temp.time;
+    frames = temp.frames;    
+    t_start = InterpGrid(find(InterpGrid>=time(1),1));    
+    t_stop = InterpGrid(find(InterpGrid<=time(end),1,'last'));
+    time_interp = t_start:Tres_interp:t_stop;
+    frames_interp = linspace(min(frames), max(frames), length(time_interp));
+    tracking_flags = ismember(floor(frames_interp),frames);
+    interp_fields = {'xPos','yPos','time','stripe_id_vec'};
+    for j = 1:length(interp_fields)
+        int_vec = temp.(interp_fields{j});
+        int_time = temp.time;
+        interp = interp1(int_time,int_vec,time_interp);
+        interp(~tracking_flags) = NaN;
+        temp.([interp_fields{j} '_interp']) = interp;
+    end
+    FOV_flags = (temp.xPos_interp > FOV_edge_padding) & (temp.xPos_interp < 1024- FOV_edge_padding)...
+        &(temp.yPos_interp > FOV_edge_padding) & (temp.yPos_interp < 256 - FOV_edge_padding);    
+    FOV_flags_all = zeros(size(InterpGrid));
+    FOV_flags_all(ismember(InterpGrid,time_interp)) = 1;
+    temp.FOV_flags = FOV_flags_all;
+    temp.nc14_flag = time(end) >= time_ceiling && time(1) <= 360;
+    temp.FOV_edge_padding = FOV_edge_padding;
+    % flag nuclei that are usable for on time-off time analysis
+%     temp.nc14_flag = min(nc_times) <= 240 && max(nc_times) >= lt-240 &&...
+%         max(diff(temp.frames))==1;        
+    ParticleID = temp.ParticleID;
+    trace_ind = [];
+    if ~isnan(ParticleID)
+        trace_ind = find(trace_particle_vec==ParticleID);
+        if isempty(trace_ind) % catch cases in which particle has been removed for QC reasons
+            error('Inconsistent indexing between Trace and Nucelus Structures')
 %             trace_ind = NaN;
-%         else
-%             ncIDCheck = trace_struct_final(trace_ind).ncID;
-%             if ncIDCheck ~= temp.ncID
-%                 error('Inconsistent Particle and NC Identifiers')
-%             end
-%         end
-%     else
-%         trace_ind = NaN;
-%     end
-%     if length(trace_ind) > 1
-%         error('Degenerate Identifiers')
-%     end
-%     temp.TraceIndex = trace_ind;
-% %     temp.MeanAP = mean(temp.ap_vector);
+        else
+            ncIDCheck = trace_struct_final(trace_ind).ncID;
+            if ncIDCheck ~= temp.ncID
+                error('Inconsistent Particle and NC Identifiers')
+            end
+        end
+    else
+        trace_ind = NaN;
+    end
+    if length(trace_ind) > 1
+        error('Degenerate Identifiers')
+    end
+    temp.TraceIndex = trace_ind;
+%     temp.MeanAP = mean(temp.ap_vector);
 %     temp.MeanAPNew = temp.p_position / pixel_per_ap_vec(set_vec==setID);
 %     temp.APbin = v_vec(find(temp.MeanAPNew>v_lb,1,'last'));
-%     nuclei_clean = [nuclei_clean temp];
-% end
-% 
-% %%% Now add flag to trace struct indicating which traces correspond to
-% %%% "good" nuclei
-% % cross-reference id variables for consistency check
-% trace_nucleus_vec = [trace_struct_final.ncID];
-% % trace index var
-% NucleusTraceIndices = [nuclei_clean.TraceIndex];
-% 
-% for i = 1:length(trace_struct_final)
-%     pID = trace_struct_final(i).ParticleID;
-%     ncInd = find(NucleusTraceIndices==i);
-%     pIDCross = nuclei_clean(ncInd).ParticleID;
-%     if pIDCross ~= pID
-%         error('Inconsistent Identifiers')
-%     end
-%     trace_struct_final(i).FOV_flags = nuclei_clean(ncInd).FOV_flags;
-%     trace_struct_final(i).nc14_flag = nuclei_clean(ncInd).nc14_flag;
-% end
+    nuclei_clean = [nuclei_clean temp];
+end
+
+%%% Now add flag to trace struct indicating which traces correspond to
+%%% "good" nuclei
+% cross-reference id variables for consistency check
+trace_nucleus_vec = [trace_struct_final.ncID];
+% trace index var
+NucleusTraceIndices = [nuclei_clean.TraceIndex];
+
+for i = 1:length(trace_struct_final)
+    pID = trace_struct_final(i).ParticleID;
+    ncInd = find(NucleusTraceIndices==i);
+    pIDCross = nuclei_clean(ncInd).ParticleID;
+    if pIDCross ~= pID
+        error('Inconsistent Identifiers')
+    end
+    trace_struct_final(i).FOV_flags = nuclei_clean(ncInd).FOV_flags;
+    trace_struct_final(i).nc14_flag = nuclei_clean(ncInd).nc14_flag;
+end
 
 % save
 save([OutPath CleanTraceName],'trace_struct_final');
-% save([OutPath CleanNucleusName],'nuclei_clean');
+save([OutPath CleanNucleusName],'nuclei_clean');
 %%% Examine Nuclear Tracking Statistics
 % first_entry = [];
 % last_exit = [];
 % dithers = [];
-% for i = 1:length(ellipse_struct)
+% for i = 1:length(schnitz_struct)
 %     FOV = nuclei_clean(i).FOV_flags;
 %     first_entry = [first_entry InterpGrid(find(FOV,1))];
 %     last_exit = [last_exit InterpGrid(find(FOV,1,'last'))];

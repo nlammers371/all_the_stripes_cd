@@ -7,11 +7,12 @@ w = 7; %memory assumed for inference
 K = 2; %states used for final inference
 Tres = 20; %Time Resolution
 alpha = 1.4; % MS2 rise time in time steps
-fluo_type = 1; % type of spot integration used
+fluo_field = 1; % type of spot integration used
 clipped = 1; % if 0, traces are taken to be full length of nc14
 stop_time_inf = 60;
 clipped_ends = 1;
 dynamic_bins = 1; % if 1, use time-resolved region classifications
+t_window = 15;
 %-----------------------------ID Variables--------------------------------%
 stripe_range = 1:7;
 bin_range_vec = [];
@@ -28,13 +29,15 @@ for i = 1:length(stripe_range)
 end
 % id variables
 datatype = 'weka';
-inference_type = 'set_bootstrap_results';
+inference_type = 'dp_bootstrap_results';
 project = 'eve7stripes_inf_2018_02_20'; %project identifier
 
 %Generate filenames and writepath
 % truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
-id_string = [ 'truncated_inference_w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
-    '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/' inference_type '/']; 
+id_string = [ '/truncated_inference_w' num2str(w) '_t' num2str(Tres)...
+    '_alpha' num2str(round(alpha*10)) '_f' num2str(fluo_field) '_cl' num2str(clipped) ...
+    '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) ...
+    '/states' num2str(K) '/t_window' num2str(round(t_window)) '/' inference_type '/']; 
 
 ReadPath = ['../../dat/' project '/' id_string];
 FigPath = ['../../fig/experimental_system/' project '/' id_string '/surface_maps/'];
@@ -53,17 +56,22 @@ t_index_vec = 1:sum(time_vec/60>=t_start);
 stripe_region_vec = soft_decode_params.stripe_region_vec;
 s_index_vec = 1:length(stripe_region_vec);
 
+stripe_region_mat = repmat(stripe_region_vec,length(time_vec),1);
+time_mat = repmat(time_vec',1,length(stripe_region_vec));
 % Initiation rate 
 init_surf_fig = figure;
 colormap(jet(128)/1.05)
 init_rate_mat = soft_decode_params.initiation_rate_mat(time_vec/60>=t_start,:,2);
 init_rate_mat = init_rate_mat / max(init_rate_mat(:));
+init_rate_mat(init_rate_mat<0) = 0;
+% init_rate_mat(time_mat>35*60&stripe_region_mat==3+1/3) = NaN;
 imagesc(init_rate_mat, [0,1])
 set(gca,'ytick',t_index_vec(ismember(time_vec(time_vec/60>=t_start)/60,plot_times)),'yticklabels',plot_times);
 set(gca,'xtick',s_index_vec(ismember(stripe_region_vec,1:7)),'xticklabels',1:7)
 title('Rate of Pol II Initiation')
 h = colorbar;
 ylabel(h, 'normalized mRNA per second')
+
 saveas(init_surf_fig, [FigPath '/init_rate_surf.png'],'png')
 saveas(init_surf_fig, [FigPath '/init_rate_surf.pdf'],'pdf')
 
@@ -71,7 +79,8 @@ saveas(init_surf_fig, [FigPath '/init_rate_surf.pdf'],'pdf')
 on_surf_fig = figure;
 colormap(jet(128)/1.05)
 on_rate_mat = soft_decode_params.transition_prob_mat(time_vec/60>=t_start,:,2);
-imagesc(on_rate_mat,[0 max(on_rate_mat(:))])
+% on_rate_mat(time_mat>35*60&stripe_region_mat==3+1/3) = NaN;
+imagesc(on_rate_mat,[.1 .6])
 set(gca,'ytick',t_index_vec(ismember(time_vec(time_vec/60>=t_start)/60,plot_times)),'yticklabels',plot_times);
 set(gca,'xtick',s_index_vec(ismember(stripe_region_vec,1:7)),'xticklabels',1:7)
 title('Rate of Activation')
@@ -87,7 +96,7 @@ off_surf_fig = figure;
 colormap(jet(128)/1.05)
 off_rate_mat = soft_decode_params.transition_prob_mat(time_vec/60>=t_start,:,3);
 % off_rate_mat(off_rate_mat>2) = NaN;
-imagesc(off_rate_mat,[0 max(off_rate_mat(:))])
+imagesc(off_rate_mat,[.2 max(off_rate_mat(:))])
 set(gca,'ytick',t_index_vec(ismember(time_vec(time_vec/60>=t_start)/60,plot_times)),'yticklabels',plot_times);
 set(gca,'xtick',s_index_vec(ismember(stripe_region_vec,1:7)),'xticklabels',1:7)
 title('Rate of De-Activation')
@@ -112,7 +121,7 @@ ylabel('time (minutes)')
 h = colorbar;
 ylabel(h, 'normalized mRNA per second')
 saveas(p_surf_fig, [FigPath '/predicted_production.png'],'png')
-saveas(p_surf_fig, [FigPath '/predicted_production.pdf'],'pdf')
+% saveas(p_surf_fig, [FigPath '/predicted_production.pdf'],'pdf')
 
 % production rate 
 f_surf_fig = figure;
@@ -135,7 +144,7 @@ p_diff_fig = figure;
 colormap(jet(128)/1.05)
 diff_mat = f_rate_mat - p_rate_mat;
 imagesc(diff_mat,[-1,1]);
-title('Actual Rate of Production')
+title('Difference Between Predicted and Actual Rate of Production')
 xlabel('eve stripe')
 ylabel('time (minutes)')
 h = colorbar;
@@ -143,4 +152,4 @@ ylabel(h, 'difference btw predicted and actual mRNA production rates')
 set(gca,'ytick',t_index_vec(ismember(time_vec(time_vec/60>=t_start)/60,plot_times)),'yticklabels',plot_times);
 set(gca,'xtick',s_index_vec(ismember(stripe_region_vec,1:7)),'xticklabels',1:7)
 saveas(p_diff_fig, [FigPath '/production_differential.png'],'png')
-saveas(p_diff_fig, [FigPath '/production_differential.pdf'],'pdf')
+% saveas(p_diff_fig, [FigPath '/production_differential.pdf'],'pdf')

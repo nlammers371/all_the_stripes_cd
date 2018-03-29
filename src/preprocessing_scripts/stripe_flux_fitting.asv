@@ -4,7 +4,7 @@ close all
 clear all
 
 % set filenames
-project = 'eve7stripes_inf_2018_02_20'; %Project Identifier
+project = 'eve7stripes_inf_2018_03_27'; %Project Identifier
 
 fig_path = ['../../fig/experimental_system/' project '/preprocessing/'];
 data_path = ['../../dat/' project '/']; % data mat directory
@@ -14,13 +14,16 @@ mkdir(flux_dynamics_path);
 trace_name = [data_path 'raw_traces_' project]; % names for compiled trace struct
 nucleus_name = [data_path 'ellipse_info_' project]; % names for compiled elipse struct
 fov_name = [data_path 'fov_partitions_' project '.mat'];
+stripe_save_name = [data_path 'stripe_pos_' project '.mat'];
 % load datasets
 load(trace_name); % particle info
 load(fov_name); % ap and stripe info at pixel level
-save_spline_figs = 0; % if 1 generates spline figs
+load(nucleus_name);
+save_spline_figs = 1; % if 1 generates spline figs
 %% generate fluorescence maps 
 cm = jet(128);
 increment = floor(size(cm,1)/7);
+max_disp = 60; % max permissible fluo dispersion for stripe classfication 
 stripe_radius = 35; % pixels .015;
 kernel_radius = 60; % radius of gauss kernel...nucleus diameter ~= 20-25
 kernel_sigma = 35; % this is kind of arbitrary
@@ -31,16 +34,16 @@ r_mat = sqrt(x_ref.^2 + y_ref.^2);
 g_kernel = exp(-(r_mat/(2*kernel_sigma))); % gauss kernel
 % time stuff
 t_window = 2; % lag/lead size in minutes
-t_vec = 15:50;
-t_start_partition = 20; % firts time to use for partitioning
-% make indexing vectors
-xPos_vec = [];
-yPos_vec = [];
-mean_xPos_vec = [];
-mean_yPos_vec = [];
-set_vec = [];
-fluo_vec = [];
-time_vec = [];
+t_vec = 25:50;
+t_start_partition = min(t_vec); % first time to use for partitioning
+% make indexing vectors for traces
+xPos_vec_particle = [];
+yPos_vec_particle = [];
+mean_xPos_vec_particle = [];
+mean_yPos_vec_particle = [];
+set_vec_particle = [];
+fluo_vec_particle = [];
+time_vec_particle = [];
 particle_vec = [];
 for i = 1:length(trace_struct)
     fluo = trace_struct(i).fluo;
@@ -51,23 +54,43 @@ for i = 1:length(trace_struct)
         error('asfa')
     end
     particle_vec = [particle_vec repelem(trace_struct(i).ParticleID,length(trace_struct(i).yPos))];
-    fluo_vec = [fluo_vec fluo];
-    time_vec = [time_vec time];
-    xPos_vec = [xPos_vec trace_struct(i).xPos];
-    yPos_vec = [yPos_vec trace_struct(i).yPos];
-    mean_xPos_vec = [mean_xPos_vec mean(trace_struct(i).xPos(time>=600))];
-    mean_yPos_vec = [mean_yPos_vec mean(trace_struct(i).yPos(time>=600))];
-    set_vec = [set_vec repelem(trace_struct(i).setID, length(trace_struct(i).yPos))];    
+    fluo_vec_particle = [fluo_vec_particle fluo];
+    time_vec_particle = [time_vec_particle time];
+    xPos_vec_particle = [xPos_vec_particle trace_struct(i).xPos];
+    yPos_vec_particle = [yPos_vec_particle trace_struct(i).yPos];
+    mean_xPos_vec_particle = [mean_xPos_vec_particle mean(trace_struct(i).xPos(time>=600))];
+    mean_yPos_vec_particle = [mean_yPos_vec_particle mean(trace_struct(i).yPos(time>=600))];
+    set_vec_particle = [set_vec_particle repelem(trace_struct(i).setID, length(trace_struct(i).yPos))];    
+end
+% same for nuclei
+xPos_vec_nc = [];
+yPos_vec_nc = [];
+mean_xPos_vec_nc = [];
+mean_yPos_vec_nc = [];
+set_vec_nc = [];
+fluo_vec_nc = [];
+time_vec_nc = [];
+nc_vec = [];
+for i = 1:length(schnitz_struct)    
+    time = schnitz_struct(i).time;                
+    nc_vec = [nc_vec repelem(schnitz_struct(i).ncID,length(schnitz_struct(i).yPos))];
+    time_vec_nc = [time_vec_nc time];
+    xPos_vec_nc = [xPos_vec_nc schnitz_struct(i).xPos];
+    yPos_vec_nc = [yPos_vec_nc schnitz_struct(i).yPos];
+    mean_xPos_vec_nc= [mean_xPos_vec_nc mean(schnitz_struct(i).xPos(time>=600))];
+    mean_yPos_vec_nc = [mean_yPos_vec_nc mean(schnitz_struct(i).yPos(time>=600))];
+    set_vec_nc = [set_vec_nc repelem(schnitz_struct(i).setID, length(schnitz_struct(i).yPos))];    
 end
 
-set_index = unique(set_vec);
+set_index = unique(set_vec_particle);
 stripe_class_vec = NaN(1,length(trace_struct));
 
-for i = 1:1%length(set_index)
-    xp_set_vec = xPos_vec(set_vec==i);
-    yp_set_vec = yPos_vec(set_vec==i);
-    fluo_set_vec = fluo_vec(set_vec==i);
-    time_set_vec = time_vec(set_vec==i);
+stripe_pos_struct = struct; % save stripe location arrays
+parfor i = 1:length(set_index)
+    xp_set_vec = xPos_vec_particle(set_vec_particle==set_index(i));
+    yp_set_vec = yPos_vec_particle(set_vec_particle==set_index(i));
+    fluo_set_vec = fluo_vec_particle(set_vec_particle==set_index(i));
+    time_set_vec = time_vec_particle(set_vec_particle==set_index(i));
     ap_mat = fov_partitions(i).pixel_ap_id_mat;
     stripe_mat = fov_partitions(i).pixel_stripe_id_mat;
     %%% handle inversions
@@ -76,11 +99,12 @@ for i = 1:1%length(set_index)
         stripe_mat = fliplr(stripe_mat);
         ap_mat = fliplr(ap_mat);
         xp_set_vec = size(stripe_mat,2) - xp_set_vec + 1;
-        mean_xPos_vec = size(stripe_mat,2) - mean_xPos_vec + 1;
+        mean_xPos_vec_particle = size(stripe_mat,2) - mean_xPos_vec_particle + 1;
     end
     stripe_id_vec = unique(reshape(stripe_mat(~isnan(stripe_mat)),1,[]),'stable');
     temp_fluo_array = NaN(size(stripe_mat,1),size(stripe_mat,2),length(t_vec));
     temp_spline_mat = NaN(size(stripe_mat,1),length(stripe_id_vec),length(t_vec));
+    temp_disp_mat = NaN(size(stripe_mat,1),length(stripe_id_vec),length(t_vec));
     for j = 1:length(t_vec)
         frame_array = zeros(size(stripe_mat));
         t = t_vec(j)*60;
@@ -91,11 +115,13 @@ for i = 1:1%length(set_index)
         t_y = yp_set_vec(time_set_vec>=t_start&time_set_vec<t_stop);
         idx = sub2ind(size(frame_array), t_y, t_x);
         frame_array(idx) = t_fluo;
+        % apply smoothing kernel
         norm_ref_array = ones(size(frame_array));
         norm_ref_array = conv2(norm_ref_array,g_kernel,'same');
         gauss_array = conv2(frame_array,g_kernel,'same');
         gauss_array = gauss_array./norm_ref_array;
         centroid_mat = NaN(size(stripe_mat,1),length(stripe_id_vec)); % true centroids
+        dispersion_mat = NaN(size(stripe_mat,1),length(stripe_id_vec)); % true centroids
         spline_mat = NaN(size(stripe_mat,1),length(stripe_id_vec)); % spline fits
         for k = 1:length(stripe_id_vec)
             stripe_id = stripe_id_vec(k);            
@@ -104,7 +130,8 @@ for i = 1:1%length(set_index)
                 y_strip(stripe_mat(y,:)~=stripe_id) = 0;                
                 indices = 1:size(stripe_mat,2);
                 mi = sum(indices.*y_strip)/sum(y_strip);                
-                centroid_mat(y,k) = mi;                
+                centroid_mat(y,k) = mi;
+                dispersion_mat(y,k) = std(indices,y_strip); % weighted std
             end            
             center_vec = centroid_mat(:,k);
             y_vec = (1:size(stripe_mat,1))';
@@ -135,10 +162,11 @@ for i = 1:1%length(set_index)
         end
         temp_fluo_array(:,:,j) = frame_array;
         temp_spline_mat(:,:,j) = spline_mat;
+        temp_disp_mat(:,:,j) = dispersion_mat;
     end    
     
-    close all    
-    %%% Make time-dependent inference regions
+    close all        
+    %%%------------- Make time-dependent inference regions -------------%%%
     mean_fluo_mat = nanmean(temp_fluo_array(:,:,t_vec>=t_start_partition),3);
     mean_center_mat = round(nanmean(temp_spline_mat(:,:,t_vec>=t_start_partition),3));
 %     borders_array = NaN(size(mean_center_mat,1),size(mean_center_mat,2),4);
@@ -180,6 +208,7 @@ for i = 1:1%length(set_index)
     end
     mode_stripe_id_mat = mode(stripe_id_mat_full(:,:,t_vec>=t_start_partition),3);
     mean_stripe_id_mat = mean(stripe_id_mat_full(:,:,t_vec>=t_start_partition),3);
+    stripe_pos_struct(i).stripe_id_mat = stripe_id_mat_full;
     stripe_RGB = NaN(size(stripe_mat,1),size(stripe_mat,2),3);    
     index_vec = 1:size(stripe_mat,2);        
     % make RGB image
@@ -209,15 +238,59 @@ for i = 1:1%length(set_index)
     %%% classify traces
     single_set_vec = [trace_struct.setID];
     set_indices = find(single_set_vec==i);
-    
+    %%
     for m = 1:length(set_indices)
         ind = set_indices(m);
         ParticleID = trace_struct(ind).ParticleID;
-        xVec = xPos_vec(particle_vec==ParticleID);
-        yVec = yPos_vec(particle_vec==ParticleID);
+        xVec = xPos_vec_particle(particle_vec==ParticleID);
+        yVec = yPos_vec_particle(particle_vec==ParticleID);
         t_trace = trace_struct(ind).time;
         f_trace = trace_struct(ind).fluo;
         t_trace = t_trace(~isnan(f_trace));
+        stripe_id_vec = zeros(1,length(t_trace))-1;
+        for t = 1:length(t_trace)
+            xp = xVec(t);
+            yp = yVec(t);
+            filter = round(t_trace(t)/60)==t_vec;
+            if sum(filter) == 0
+                continue
+            end
+            s_id = stripe_id_mat_full(yp,xp,filter);
+            if ~isnan(s_id)
+                dispersion_factor = nanmean(temp_disp_mat(:,round(s_id),filter));
+                if dispersion_factor <= max_disp
+                    stripe_id_vec(t) = s_id;
+                else
+                    stripe_id_vec(t) = -1;
+                end
+            else
+                stripe_id_vec(t) = NaN;
+            end
+        end         
+        fill_ind = find(-1==(stripe_id_vec));
+        id_vec = 1:length(stripe_id_vec);
+        t_vec(
+        if ~isempty(fill_ind) 
+            % Assign early time points to nearest valid dynamic bin        
+            for k = 1:length(fill_ind)
+                [~, nn] = min(abs(t_vec - round(t_trace(fill_ind(k))/60)));
+                stripe_id_vec(fill_ind(k)) = stripe_id_mat_full(yVec(fill_ind(k)),xVec(fill_ind(k)),nn);
+            end
+        end        
+        trace_struct(ind).stripe_id_inf = mode(stripe_id_vec);
+        trace_struct(ind).stripe_id_vec = stripe_id_vec;
+    end    
+    %%
+    %%% classify nuclei
+    single_set_vec = [schnitz_struct.setID];
+    set_indices = find(single_set_vec==i);
+    
+    for m = 1:length(set_indices)
+        ind = set_indices(m);
+        ncID = schnitz_struct(ind).ncID;
+        xVec = round(xPos_vec_nc(nc_vec==ncID));
+        yVec = round(yPos_vec_nc(nc_vec==ncID));
+        t_trace = schnitz_struct(ind).time;                
         stripe_id_vec = NaN(1,length(t_trace));
         for t = 1:length(t_trace)
             xp = xVec(t);
@@ -226,15 +299,30 @@ for i = 1:1%length(set_index)
             if sum(filter) == 0
                 continue
             end
-            stripe_id_vec(t) = stripe_id_mat_full(yp,xp,filter);
+            s_id = stripe_id_mat_full(yp,xp,filter);
+            dispersion_factor = nanmean(temp_disp_mat(round(s_id)));
+            if dispersion_factor <= max_disp
+                stripe_id_vec(t) = s_id;
+            else
+                stripe_id_vec(t) = NaN;
+            end
         end         
-        nan_ind = find(isnan(stripe_id_vec));
-        if ~isempty(nan_ind) % at least 1 NaN            
-            stripe_id_vec(nan_ind) = stripe_id_mat_full(round(mean(yVec(nan_ind))),round(mean(xVec(nan_ind))),1);
-        end        
-        trace_struct(ind).stripe_id_inf = mean(stripe_id_vec);
-        trace_struct(ind).stripe_id_vec = stripe_id_vec;
+        fill_ind = find(isnan(stripe_id_vec));
+        id_vec = 1:length(stripe_id_vec);
+        id_vec(fill_ind) = Inf;
+        if ~isempty(fill_ind) 
+            % Assign early time points to nearest valid dynamic bin        
+            for k = 1:length(fill_ind)
+                [~, nn] = min(abs(id_vec-fill_ind(k)));
+                stripe_id_vec(fill_ind(k)) = stripe_id_mat_full(round(mean(yVec(fill_ind))),round(mean(xVec(fill_ind))),nn);
+            end
+        end                
+        schnitz_struct(ind).stripe_id_inf = mode(stripe_id_vec);
+        schnitz_struct(ind).stripe_id_vec = stripe_id_vec;
     end    
+    error('asfas')
+    disp(['Completed ' num2str(i) ' of ' num2str(length(set_index))])    
 end
-
+save(stripe_save_name, 'stripe_pos_struct')
 save(trace_name,'trace_struct')
+save(nucleus_name,'schnitz_struct')

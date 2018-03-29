@@ -27,7 +27,7 @@ plot_scatters = 0; %If 1 plot single bootstrap results
 % truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
 id_string = [ 'truncated_inference_w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
     '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) ...
-    '_tbins' num2str(dynamic_bins) '/t_window' num2str(t_window) '/' inference_type '/']; 
+    '_tbins' num2str(dynamic_bins) '/states' num2str(K) '/t_window' num2str(t_window)  '/' inference_type '/']; 
 
 ReadPath = ['../../dat/' project '/' id_string];
 FigPath = ['../../fig/experimental_system/' project '/' id_string];

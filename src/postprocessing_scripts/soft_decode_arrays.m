@@ -14,8 +14,10 @@ alpha = 1.4; % MS2 rise time in time steps
 fluo_type = 1; % type of spot integration used
 clipped = 1; % if 0, traces are taken to be full length of nc14
 stop_time_inf = 60;
+fluo_field = 1;
 clipped_ends = 1;
 dynamic_bins = 1; % if 1, use time-resolved region classifications
+t_window = 50;
 %-----------------------------ID Variables--------------------------------%
 stripe_range = 1:7;
 bin_range_vec = [];
@@ -32,15 +34,18 @@ for i = 1:length(stripe_range)
 end
 % id variables
 datatype = 'weka';
-inference_type = 'set_bootstrap_results';
+inference_type = 'dp_bootstrap_results';
 project = 'eve7stripes_inf_2018_02_20'; %project identifier
 
 %Generate filenames and writepath
 % truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
-id_string = [ 'truncated_inference_w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
-    '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/' inference_type '/']; 
-% DropboxFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\hmmm_data\inference_out\';
-DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+id_string = [ '/truncated_inference_w' num2str(w) '_t' num2str(Tres)...
+    '_alpha' num2str(round(alpha*10)) '_f' num2str(fluo_field) '_cl' num2str(clipped) ...
+    '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) ...
+    '/states' num2str(K) '/t_window' num2str(round(t_window)) '/' inference_type '/']; 
+
+DropboxFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve7stripes_data\inference_out\';
+% DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
 folder_path =  [DropboxFolder '/' project '/' id_string];
 OutPath = ['../../dat/' project '/' id_string];
 FigPath = ['../../fig/experimental_system/' project '/' id_string];
@@ -60,7 +65,7 @@ if isempty(filenames)
     error('No file with specified inference parameters found')
 end
 %%% load inference traces 
-load('E:\Nick\projects\all_the_stripes_cd\dat\eve7stripes_inf_2018_02_20\inference_traces_eve7stripes_inf_2018_02_20_dT20.mat');
+load('D:\Data\Nick\projects\all_the_stripes_cd\dat\eve7stripes_inf_2018_02_20\inference_traces_eve7stripes_inf_2018_02_20_dT20.mat');
 
 %Iterate through result sets and concatenate into 1 combined struct
 glb_all = struct;
@@ -69,10 +74,6 @@ for f = 1:length(filenames)
     % load the eve validation results into a structure array 'output'    
     load([folder_path filenames{f}]);
     if output.skip_flag == 1 
-        continue
-    elseif length(output.stripe_id) > 1
-        continue
-    elseif output.t_window ~= 900
         continue
     end
     for fn = fieldnames(output)'
@@ -96,7 +97,7 @@ sub_inf_id_vec = [];
 inf_trace_id_vec = [];
 inf_particle_id_vec = [];
 inf_time_vec = [];
-inf_stripe_vec = [];
+% inf_stripe_vec = [];
 mismatch_err = 0;
 for i = 1:length(glb_all)
     traces = glb_all(i).traces;
@@ -104,7 +105,7 @@ for i = 1:length(glb_all)
     inf_particle_id_vec = [inf_particle_id_vec particles];
 %     inf_trace_id_vec = [inf_trace_id_vec NaN(1,length(particles))];
     inf_time_vec = [inf_time_vec repelem(glb_all(i).t_inf,length(particles))];
-    inf_stripe_vec = [inf_stripe_vec repelem(bin_range_vec(round(bin_map_vec,1)==glb_all(i).stripe_id),length(particles))];
+%     inf_stripe_vec = [inf_stripe_vec repelem(bin_range_vec(round(bin_map_vec,1)==glb_all(i).stripe_id),length(particles))];
     inf_id_vec = [inf_id_vec repelem(i,length(particles))];    
     sub_inf_id_vec = [sub_inf_id_vec 1:length(particles)];    
 end
@@ -115,7 +116,8 @@ inf_stripe_index = unique([glb_all.stripe_id]);
 % params for soft decode inf
 tDelta = 60; % temporal step size (in minutes) 
 sd_stripe_regions = (6*min(bin_range_vec):1:6*max(bin_range_vec))/6;
-sd_time_regions = min(inf_time_index):tDelta:max(inf_time_index);
+% sd_time_regions = min(inf_time_index):tDelta:max(inf_time_index);
+sd_time_regions = 15*60:tDelta:50*60;
 window_size = 3*60; % number of preceding and succeeding minutes to include in sliding window
 hmm_window_size = glb_all(1).t_window/2;
 
@@ -132,7 +134,7 @@ for n = 1:w
 end
 alpha_kernel = fliplr(alpha_kernel)/Tres;
 glb_index_vec = 1:length(glb_all);
-
+%%
 transition_prob_mat= NaN(length(sd_time_regions),length(sd_stripe_regions),K^2);    
 transition_rate_mat= NaN(length(sd_time_regions),length(sd_stripe_regions),K^2);    
 promoter_state_mat = NaN(length(sd_time_regions),length(sd_stripe_regions),K);    
@@ -150,11 +152,12 @@ for a = 1:length(sd_stripe_regions)
         % fact that trace region assignment can vary in time
         for i = 1:length(sd_time_regions)     
             inf_time = sd_time_regions(i);
-            % find elligible inference results
-            filter = inf_time_vec-hmm_window_size<inf_time&...
-                inf_time_vec+hmm_window_size>inf_time &  inf_stripe_vec<=analysis_stripe_region+1/6 &...
-                inf_stripe_vec>=analysis_stripe_region-1/6;            
-            eligible_particles = unique(inf_particle_id_vec(filter));
+            % inference results that fall into time window
+            inf_filter = inf_time_vec-hmm_window_size<inf_time&...
+                inf_time_vec+hmm_window_size>=inf_time;  
+            % now find particles that are in correct region during time
+            % window
+            eligible_particles = unique(inf_particle_id_vec(inf_filter));
             inf_particle_vec = [];            
             for m = 1:length(eligible_particles) % determine which particles are in appt sub region
                 tt = trace_struct_final(trace_particle_vec==eligible_particles(m)).time;
@@ -177,7 +180,7 @@ for a = 1:length(sd_stripe_regions)
             slice_fluo = zeros(length(inf_particle_vec),1);
             for p = 1:length(boot_vec)
                 ParticleID = boot_ids(p);
-                p_filter = filter&inf_particle_id_vec==ParticleID;          
+                p_filter = inf_filter&inf_particle_id_vec==ParticleID;          
                 inf_ids = inf_id_vec(p_filter);
                 inf_sub_ids = sub_inf_id_vec(p_filter);
                 % take average of ss and s matrices for relevant time steps

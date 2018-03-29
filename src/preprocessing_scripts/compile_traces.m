@@ -3,7 +3,7 @@ close all
 clear all
 %------------------------Set Path Specs, ID Vars------------------------%
 FolderPath = 'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\';
-project = 'eve7stripes_inf_2018_02_20'; %Project Identifier
+project = 'eve7stripes_inf_2018_03_27'; %Project Identifier
 % folders
 fig_path = ['../../fig/experimental_system/' project '/preprocessing/'];
 data_path = ['../../dat/' project '/']; % data mat directory
@@ -19,7 +19,8 @@ mkdir([ap_pos_path '/stripe_fits']);
 mkdir(fluo_path);
 % cleaning params
 keyword = '_30uW_550V'; % Keyword to ensure only sets from current project are pulled
-% show_ap_fit_figs = 0;
+xDim = 1024;
+yDim = 256;
 snippet_size = 15; % particles within snippet/2+1 are of concern
 pre_post_padding = 10; % max mun frames for which nucleus can be MIA at start or end
 % store set names
@@ -124,38 +125,31 @@ for i = 1:length(cp_filenames) % Loop through filenames
         short_flag = 0;
         if length(raw_trace(~isnan(raw_trace))) < 3            
             continue
-        elseif length(raw_trace(~isnan(raw_trace))) < 5            
-            short_flag = 1;
         end
+%         elseif length(raw_trace(~isnan(raw_trace))) < 5            
+%             short_flag = 1;
+%         end
         j_pass = j_pass + 1;
-        %Generate versions with NaNs removed        
+        % Generate full length time and frame vectors     
         time_full = time_clean(trace_start:trace_stop);                
         frames_full = frames_clean(trace_start:trace_stop);
         % Pull variables from particle structure
         % Why the hell is there an APPos field with negative values?
         ap_positions_raw = particles(j).APpos;
         fov_xPos_raw = particles(j).xPos;
-        fov_yPos_raw = particles(j).yPos;
-        fluo3_raw = particles(j).Fluo3;
-        fluo5_raw = particles(j).Fluo5;
+        fov_yPos_raw = particles(j).yPos;        
         pt_frames = particles(j).Frame;
         % Only take values from CP struct corresponding to frames in
-        % filtered frames
-        NaN_vec = NaN(1,length(frames_full));        
+        % filtered frames              
         ap_positions = ap_positions_raw(ismember(pt_frames,frames_full));        
         xPos = fov_xPos_raw(ismember(pt_frames,frames_full));        
-        yPos = fov_yPos_raw(ismember(pt_frames,frames_full));
-        fluo3 = NaN_vec;
-        fluo3(ismember(frames_full,pt_frames)) = fluo3_raw(ismember(pt_frames,frames_full));
-        fluo5 = NaN_vec;
-        fluo5(ismember(frames_full,pt_frames)) = fluo5_raw(ismember(pt_frames,frames_full));
+        yPos = fov_yPos_raw(ismember(pt_frames,frames_full));        
         pt_frames = pt_frames(ismember(pt_frames,frames_full));
         % look for edge issues
-        edge_frames = (((512-xPos) <= snippet_size/2)+(xPos <= snippet_size/2)+...
-                          ((256-yPos) <= snippet_size/2)+(yPos <= snippet_size/2))>0;
-        trace_struct(j_pass).edge_flag = (sum(edge_frames)>0)&&~short_flag;        
-        % Record info in trace struct
-        trace_struct(j_pass).APAngle = APAngle;
+        edge_frames = ((xDim-xPos) <= snippet_size/2)|(xPos <= snippet_size/2)|...
+                          ((yDim-yPos) <= snippet_size/2)|(yPos <= snippet_size/2);
+        trace_struct(j_pass).edge_flag = (sum(edge_frames)>0);        
+        % Record info in trace struct        
         trace_struct(j_pass).cp_frames = pt_frames; % Keep track of frame correspondence
         trace_struct(j_pass).all_frames = frames_full;
         trace_struct(j_pass).nc14 = first_frame;
@@ -163,9 +157,7 @@ for i = 1:length(cp_filenames) % Loop through filenames
         trace_struct(j_pass).xPos = xPos;
         trace_struct(j_pass).yPos = yPos;
         trace_struct(j_pass).ap_vector = ap_positions;
-        trace_struct(j_pass).fluo = trace_full;
-        trace_struct(j_pass).fluo3 = fluo3;
-        trace_struct(j_pass).fluo5 = fluo5;
+        trace_struct(j_pass).fluo = trace_full;        
         trace_struct(j_pass).time = time_full;
         trace_struct(j_pass).FluoError = particles(j).FluoError; %Estimated error in bkg subtraction     
         % For nuclei corresponding to particles, add fluo info and revise
@@ -202,8 +194,10 @@ for i = 1:length(schnitz_struct)
         schnitz_struct(i).ParticleID = NaN;
     end
 end
+%%% !!!Note I find NO edge cases...this seems unreasonable. Need to double check
 
 %%% Look for trace fragments that belong together. Stitch them up
+
 %%% This is premised on the trace start times being sorted in ascending
 %%% order!
 set_index = [trace_struct.setID];
@@ -267,7 +261,7 @@ for s = 1:length(set_vec)
         tr_row = tr_row(~ismember(rm_vec,[row_ind col_ind]));
         tr_col = tr_col(~ismember(rm_vec,[row_ind col_ind]));                
     end    
-    cat_fields = {'fluo','fluo3','fluo5','time','ap_vector','xPos','yPos'...
+    cat_fields = {'fluo','time','ap_vector','xPos','yPos'...
                     'cp_frames','all_frames'};
     for j = 1:length(tr_col)
         ID1 = min(tr_col(j),tr_row(j));
@@ -308,9 +302,9 @@ end
 
 %%
 %--------------Map total fluorecence to AP position for each set----------%
-%By Default Let's Assume that we wish to take full nc14
-start_time = 20*60;
-stop_time = 1000*60;
+% Only use tp after 30 minutes to ensure mature stripes
+start_time = 30*60;
+stop_time = 60*60;
 %Create Arrays to store total fluorecence and # data points
 %Careful with rounding errors here...
 ap_index = round(min([trace_struct.ap_vector]),3):.001:round(max([trace_struct.ap_vector]),3);
@@ -392,6 +386,7 @@ else
     stripe_positions = cell(1,length(cp_filenames));
     stripe_id_cell = cell(1,length(cp_filenames)); 
     f_unit_cell = cell(1,length(cp_filenames)); 
+    stripe_edge_cell = cell(1,length(cp_filenames)); 
     %Find stripe centers for each set
     for s = 1:length(cp_filenames)
         ap_array = ap_fluo_levels(s,:);
@@ -410,6 +405,7 @@ else
             f = ceil(ap_array(i)/5e4);    
             f_unit_counts = [f_unit_counts repelem(bounded_ap(i),f)];   
         end
+        
         %Cluster Data
         n_changes = 1;
         iter = 0;
@@ -417,6 +413,10 @@ else
         %Remove stripe center priors that are not present in set
         stripe_centers = stripe_priors(1==((stripe_priors >= min(bounded_ap))...
             .*(stripe_priors <= max(bounded_ap))));
+        %check for stripes on edge of FOV...let's not use these
+        stripe_edge_flags = zeros(1,length(stripe_centers));
+        stripe_edge_flags(stripe_centers-min(bounded_ap)<stripe_radius) = 1;
+        stripe_edge_flags(-stripe_centers+max(bounded_ap)<stripe_radius) = 1;
         %identify stripes that appear to be in set
         stripe_id_vec = s_ids(ismember(stripe_priors,stripe_centers));
         n_stripes = length(stripe_centers);
@@ -471,10 +471,14 @@ else
             stripe_vec_full(candidate_ids) = i;     
             stripe_boundaries = [stripe_boundaries; sc+neg_edge sc-stripe_radius sc sc+stripe_radius sc+pos_edge];       
         end
-        stripe_positions{s} = stripe_boundaries;
-        stripe_id_cell{s} = stripe_id_vec;
+        
+        
+        stripe_positions{s} = stripe_boundaries(stripe_edge_flags==0,:);
+        use_stripes = stripe_id_vec(stripe_edge_flags==0);
+        stripe_id_cell{s} = stripe_id_vec(ismember(stripe_id_vec,use_stripes));
         f_unit_cell{s} = f_unit_counts;
-    %     stripe_id_full_cell{s} = f_unit_counts;
+        stripe_edge_cell{s} = stripe_edge_flags;
+%         stripe_id_full_cell{s} = f_unit_counts;
         fn = cp_filenames{s};
         tt_s_end = strfind(fn,'\Comp') - 1;
         tt_s_start = strfind(fn,'\2018') + 1;
@@ -490,18 +494,21 @@ else
         ap_vec = round(min(f_unit_counts),3):ap_size:round(max(f_unit_counts),3);
         hold on
         legend_string = {};
+        b = [];
         for i = 1:n_stripes
             %plot full background
             ap_vec_plot_full = histc(f_unit_counts(stripe_vec_full==i),ap_vec);        
-            p = bar(ap_vec,ap_vec_plot_full,1,'FaceColor',cm(1+(stripe_id_vec(i)-1)*increment,:),'FaceAlpha',.2);
-            set(get(get(p,'Annotation'),'LegendInformation'),'IconDisplayStyle','off');
+            b = [b bar(ap_vec,ap_vec_plot_full,1,'FaceColor',cm(1+(stripe_id_vec(i)-1)*increment,:),'FaceAlpha',.2)];            
             %overlay stripe centers
             legend_string = [legend_string {['Stripe ' num2str(stripe_id_vec(i))]}];
+            if stripe_edge_flags(i) == 1
+                continue
+            end
             ap_vec_plot = histc(f_unit_counts(stripe_vec==i),ap_vec);        
             bar(ap_vec,ap_vec_plot,1,'FaceColor',cm(1+(stripe_id_vec(i)-1)*increment,:),'FaceAlpha',.7)
         end
         grid on
-        legend(legend_string{:});
+        legend(b,legend_string{:});
         title(['Inferred Stripe Positions, ' t_string ' (Set ' num2str(s) ')']);
         xlabel('AP Position (%)');
         ylabel('AU')
