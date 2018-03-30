@@ -12,7 +12,6 @@ clipped = 1; % if 0, traces are taken to be full length of nc14
 stop_time_inf = 60;
 clipped_ends = 1;
 dynamic_bins = 1; % if 1, use time-resolved region classifications
-t_window = 15; % size of sliding window used
 %-----------------------------ID Variables--------------------------------%
 stripe_range = 1:7;
 bin_range_vec = [];
@@ -31,17 +30,16 @@ end
 
 % id variables
 datatype = 'weka';
-inference_type = 'dp_bootstrap_results';
+inference_type = 'set_bootstrap_results';
 project = 'eve7stripes_inf_2018_02_20'; %project identifier
 
 
 %Generate filenames and writepath
 % truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
 id_string = [ 'truncated_inference_w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
-    '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) ...
-    '_tbins' num2str(dynamic_bins) '/states' num2str(K) '/t_window' num2str(t_window) '/' inference_type '/']; 
-DropboxFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve7stripes_data\inference_out\';
-% DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+    '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/' inference_type '/']; 
+% DropboxFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\hmmm_data\inference_out\';
+DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
 
 folder_path =  [DropboxFolder '/' project '/' id_string];
 OutPath = ['../../dat/' project '/' id_string];
@@ -63,21 +61,18 @@ if isempty(filenames)
 end
 
 x_grid_plot = (2:22)/3;
-temp_path = [DropboxFolder '/' project '/truncated_inference_w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
-    '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/'];
+
 %Iterate through result sets and concatenate into 1 combined struct
 glb_all = struct;
 f_pass = 1;
 for f = 1:length(filenames)
     % load the eve validation results into a structure array 'output'    
-    load([folder_path filenames{f}]);    
-    if output.skip_flag == 1 
+    load([folder_path filenames{f}]);
+    if output.skip_flag == 1  
         continue
-    end    
-    t_window = output.t_window;
-    outpath = [temp_path '/t_window' num2str(round(t_window/60)) '/' inference_type '/'];
-    mkdir(outpath)
-    save([outpath filenames{f}])
+    elseif output.t_window ~= 900 || length(output.stripe_id) > 1
+        continue
+    end
     for fn = fieldnames(output)'
         glb_all(f_pass).(fn{1}) = output.(fn{1});
     end
@@ -93,7 +88,17 @@ end
 %Adjust rates as needed (address negative off-diagonal values)
 %Define convenience Arrays and vectors
 alpha = glb_all(1).alpha;
-bin_vec = [glb_all.stripe_id];
+bin_vec = [];
+for i = 1:length(glb_all)
+    s_id = glb_all(i).stripe_id;
+    if length(s_id) == 1
+        bin_vec = [bin_vec s_id];
+    elseif round(max(s_id),1)==6.7 && round(min(s_id),1)==.7
+        bin_vec = [bin_vec 0];
+    else
+        error('pathological stripe id')
+    end
+end
 bin_range_vec = unique(bin_vec);
 time_vec = [glb_all.t_inf];
 time_index = unique(time_vec);
