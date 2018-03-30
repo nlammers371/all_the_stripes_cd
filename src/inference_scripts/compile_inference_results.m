@@ -1,6 +1,6 @@
 % Compile results into summary structure. Generate summary plots
 addpath('../utilities/');
-clear all
+clear 
 close all
 %------------------------------Set System Params--------------------------%
 w = 7; %memory assumed for inference
@@ -12,6 +12,8 @@ clipped = 1; % if 0, traces are taken to be full length of nc14
 stop_time_inf = 60;
 clipped_ends = 1;
 dynamic_bins = 1; % if 1, use time-resolved region classifications
+t_window = 30; % size of sliding window used
+t_inf = 35;
 %-----------------------------ID Variables--------------------------------%
 stripe_range = 1:7;
 bin_range_vec = [];
@@ -20,7 +22,6 @@ for i = 1:length(stripe_range)
         bin_range_vec = stripe_range(i) - j/3 + 2/3;
     end
 end
-bin_range_vec = [0 bin_range_vec];
     
 x_labels = {};
 for i = 1:length(stripe_range)
@@ -33,122 +34,108 @@ datatype = 'weka';
 inference_type = 'set_bootstrap_results';
 project = 'eve7stripes_inf_2018_02_20'; %project identifier
 
-
 %Generate filenames and writepath
 % truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
-id_string = [ 'truncated_inference_w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
-    '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) '/' inference_type '/']; 
-% DropboxFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\hmmm_data\inference_out\';
-DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+id_var = [ '/w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
+    '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) ...
+    '_tbins' num2str(dynamic_bins) '/states' num2str(K) '/t_window' num2str(t_window) '/' inference_type '/']; 
+DPFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve7stripes_data\inference_out\';
+% DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
 
-folder_path =  [DropboxFolder '/' project '/' id_string];
-OutPath = ['../../dat/' project '/' id_string];
-FigPath = ['../../fig/experimental_system/' project '/' id_string];
+f_path =  [DPFolder '/' project '/' id_var '/'];
+OutPath = ['../../dat/' project '/' id_var];
+FigPath = ['../../fig/experimental_system/' project '/' id_var];
 mkdir(OutPath)
 mkdir(FigPath)
 %---------------------------------Read in Files---------------------------%
-files = dir(folder_path);
-filenames = {};
+files = dir(f_path);
+f_names = {};
 for i = 1:length(files)
     if ~isempty(strfind(files(i).name,['w' num2str(w)])) && ...
        ~isempty(strfind(files(i).name,['K' num2str(K)]))
-        filenames = [filenames {files(i).name}];
+        f_names = [f_names {files(i).name}];
     end
 end
-
-if isempty(filenames)
+if isempty(f_names)
     error('No file with specified inference parameters found')
 end
-
-x_grid_plot = (2:22)/3;
-
+%%
 %Iterate through result sets and concatenate into 1 combined struct
-glb_all = struct;
+inf_struct = struct;
 f_pass = 1;
-for f = 1:length(filenames)
-    % load the eve validation results into a structure array 'output'    
-    load([folder_path filenames{f}]);
-    if output.skip_flag == 1  
+for w = 1:length(f_names)
+    % load the eve validation results into a structure array 'output'        
+    load([f_path f_names{w}]);        
+    if output.skip_flag == 1 
         continue
-    elseif output.t_window ~= 900 || length(output.stripe_id) > 1
+    elseif output.t_window~=t_window*60 || ~ismember(output.t_inf,t_inf*60)
         continue
     end
+    
     for fn = fieldnames(output)'
-        glb_all(f_pass).(fn{1}) = output.(fn{1});
+        inf_struct(f_pass).(fn{1}) = output.(fn{1});
     end
-    glb_all(f_pass).source = filenames{f};        
-    f_pass = f_pass + 1
-%     catch
-%         warning(['File ' num2str(f) ' failed to load'])
-%     end
+    inf_struct(f_pass).source = f_names{w};        
+    f_pass = f_pass + 1;
+    disp(f_pass)
 end
 
 %%
 %%% ------------------------------Fig Calculations-------------------------%
 %Adjust rates as needed (address negative off-diagonal values)
 %Define convenience Arrays and vectors
-alpha = glb_all(1).alpha;
-bin_vec = [];
-for i = 1:length(glb_all)
-    s_id = glb_all(i).stripe_id;
-    if length(s_id) == 1
-        bin_vec = [bin_vec s_id];
-    elseif round(max(s_id),1)==6.7 && round(min(s_id),1)==.7
-        bin_vec = [bin_vec 0];
-    else
-        error('pathological stripe id')
-    end
-end
+alpha = inf_struct(1).alpha;
+bin_vec = [inf_struct.stripe_id];
 bin_range_vec = unique(bin_vec);
-time_vec = [glb_all.t_inf];
+time_vec = [inf_struct.t_inf];
 time_index = unique(time_vec);
-initiation_rates = zeros(K,length(glb_all)); % r
-pi0_all = zeros(K,length(glb_all));    
-noise_all = zeros(1,length(glb_all)); % sigma    
-dwell_all = NaN(K,length(glb_all));
+initiation_rates = zeros(K,length(inf_struct)); % r
+pi0_all = zeros(K,length(inf_struct));    
+noise_all = zeros(1,length(inf_struct)); % sigma    
+dwell_all = NaN(K,length(inf_struct));
 % Extract variables and perform rate fitting as needed
-for i = 1:length(glb_all)    
-    [initiation_rates(:,i), ranked_r] = sort(60*[glb_all(i).r]); 
-    pi0 = glb_all(i).pi0(ranked_r);    
-    noise_all(i) = sqrt(glb_all(i).noise); 
-    A = reshape(glb_all(i).A,K,K);
+for i = 1:length(inf_struct)    
+    [initiation_rates(:,i), ranked_r] = sort(60*[inf_struct(i).r]); 
+    pi0 = inf_struct(i).pi0(ranked_r);    
+    noise_all(i) = sqrt(inf_struct(i).noise); 
+    A = reshape(inf_struct(i).A,K,K);
     A = A(ranked_r, ranked_r);
     %Obtain raw R matrix
     R = prob_to_rate(A,Tres);
-    glb_all(i).R_mat = R;
+    inf_struct(i).R_mat = R;
     Rcol = reshape(R,1,[]);
-    glb_all(i).R = Rcol;
+    inf_struct(i).R = Rcol;
     %Check for imaginary and negative elements. If present, perform rate
     %fit   
-    glb_all(i).r_fit_flag = 0;
+    inf_struct(i).r_fit_flag = 0;
     if ~isreal(Rcol)
-        glb_all(i).r_fit_flag = 1;
+        inf_struct(i).r_fit_flag = 1;
         out = prob_to_rate_fit_sym(A, Tres, 'gen', .005, 1);            
-        glb_all(i).R_fit = 60*out.R_out;
+        inf_struct(i).R_fit = 60*out.R_out;
         r_diag = 60*diag(out.R_out);
     elseif sum(Rcol<0)>K
-        glb_all(i).r_fit_flag = 2;
+        inf_struct(i).r_fit_flag = 2;
         R_conv = 60*(R - eye(K).*R);
         R_conv(R_conv<0) = 0;
         R_conv(eye(K)==1) = -sum(R_conv);
-        glb_all(i).R_fit = R_conv;
+        inf_struct(i).R_fit = R_conv;
         r_diag = diag(R_conv);
     else
-        glb_all(i).R_fit = 60*glb_all(i).R_mat;
-        r_diag = 60*diag(glb_all(i).R_mat); 
+        inf_struct(i).R_fit = 60*inf_struct(i).R_mat;
+        r_diag = 60*diag(inf_struct(i).R_mat); 
     end    
     dwell_all(:,i) = -1./r_diag;
 end
 
 % Save rate info
 %Make 3D Arrays to stack matrices
-R_orig_array = NaN(length(glb_all),K^2);
-R_fit_array = NaN(length(glb_all),K^2);
-A_array = NaN(length(glb_all),K^2);
-for i = 1:length(glb_all)
-    R_fit_array(i,:) = reshape(glb_all(i).R_fit,1,[]);
-    R_orig_array(i,:) = reshape(real(glb_all(i).R_mat),1,[]);
-    A_array(i,:) = reshape(real(glb_all(i).A_mat),1,[]);
+R_orig_array = NaN(length(inf_struct),K^2);
+R_fit_array = NaN(length(inf_struct),K^2);
+A_array = NaN(length(inf_struct),K^2);
+for i = 1:length(inf_struct)
+    R_fit_array(i,:) = reshape(inf_struct(i).R_fit,1,[]);
+    R_orig_array(i,:) = reshape(real(inf_struct(i).R_mat),1,[]);
+    A_array(i,:) = reshape(real(inf_struct(i).A_mat),1,[]);
 end
 
 % 2D Arrays to store moments (A's are calculated to have for output structure)
@@ -176,16 +163,16 @@ for b = 1:length(bin_range_vec)
     end
 end
 %Occupancy
-occupancy = zeros(K,length(glb_all));
-for i = 1:length(glb_all)
-    [~, ranked_r] = sort([glb_all(i).r]);
-    A = glb_all(i).A_mat;
+occupancy = zeros(K,length(inf_struct));
+for i = 1:length(inf_struct)
+    [~, ranked_r] = sort([inf_struct(i).r]);
+    A = inf_struct(i).A_mat;
     A = A(ranked_r,ranked_r);
     [V,D] = eig(A);
     ind = diag(D)==max(diag(D));
     steady = V(:,ind)./sum(V(:,ind));
     occupancy(:,i) = steady;
-    glb_all(i).occupancy = steady;
+    inf_struct(i).occupancy = steady;
 end
 avg_dwell = NaN(K,length(bin_range_vec),length(time_index));
 std_dwell = NaN(K,length(bin_range_vec),length(time_index));

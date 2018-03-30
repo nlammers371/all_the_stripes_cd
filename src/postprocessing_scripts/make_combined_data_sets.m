@@ -23,12 +23,7 @@ for i = 1:length(stripe_range)
         bin_range_vec = [bin_range_vec stripe_range(i) + j/3 - 2/3];
     end
 end
-bin_map_vec = [];
-for i = 1:length(stripe_range)
-    for j = 1:3
-        bin_map_vec = [bin_map_vec stripe_range(i) + j*.3 - .6];
-    end
-end
+
 % id variables
 datatype = 'weka';
 inference_type = 'set_bootstrap_results';
@@ -36,28 +31,31 @@ project = 'eve7stripes_inf_2018_02_20'; %project identifier
 
 %Generate filenames and writepath
 % truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
-id_string = [ '/truncated_inference_w' num2str(w) '_t' num2str(Tres)...
+id_thing = [ '/w' num2str(w) '_t' num2str(Tres)...
     '_alpha' num2str(round(alpha*10)) '_f' num2str(fluo_field) '_cl' num2str(clipped) ...
     '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) ...
     '/states' num2str(K) '/t_window' num2str(round(t_window)) '/' inference_type '/']; 
 
 DropboxFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve7stripes_data\inference_out\';
 % DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
-folder_path =  [DropboxFolder '/' project '/' id_string];
+folder_thing =  [DropboxFolder '/' project '/' id_thing];
 
-OutPath = ['../../dat/' project '/' id_string];
+OutPath = ['../../dat/' project '/' id_thing];
 mkdir(OutPath)
+load('D:\Data\Nick\projects\all_the_stripes_cd\dat\eve7stripes_inf_2018_02_20\w7_t20_alpha14_f1_cl1_no_ends1_tbins1\states2\t_window30\dp_bootstrap_results\viterbi_fits.mat')
+viterbi_particle_vec = [viterbi_fit_struct.ParticleID];
+
 %---------------------------------Read in Files---------------------------%
-files = dir(folder_path);
-filenames = {};
+files = dir(folder_thing);
+file_things = {};
 for i = 1:length(files)
     if ~isempty(strfind(files(i).name,['w' num2str(w)])) && ...
        ~isempty(strfind(files(i).name,['K' num2str(K)]))
-        filenames = [filenames {files(i).name}];
+        file_things = [file_things {files(i).name}];
     end
 end
 
-if isempty(filenames)
+if isempty(file_things)
     error('No file with specified inference parameters found')
 end
 %%% load inference traces 
@@ -66,20 +64,20 @@ load('D:\Data\Nick\projects\all_the_stripes_cd\dat\eve7stripes_inf_2018_02_20\in
 %Iterate through result sets and concatenate into 1 combined struct
 glb_all = struct;
 f_pass = 0;
-%%
-for f = 1778:length(filenames)
+
+for f = 1:length(file_things)
     DropboxFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve7stripes_data\inference_out\';
     % DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
-    folder_path =  [DropboxFolder '/' project '/' id_string];
+%     folder_thing =  [DropboxFolder '/' project '/' id_thing];
     % load the eve validation results into a structure array 'output'    
-    load([folder_path filenames{f}]);
+    load([folder_thing file_things{f}]);
     if output.skip_flag == 1 
         continue
     end
     for fn = fieldnames(output)'
         glb_all(f_pass).(fn{1}) = output.(fn{1});
     end
-    glb_all(f_pass).source = filenames{f};        
+    glb_all(f_pass).source = file_things{f};        
     f_skip = f - f_pass
     f_pass = f_pass + 1    
 end

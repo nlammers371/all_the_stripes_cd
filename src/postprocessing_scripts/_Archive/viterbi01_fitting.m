@@ -1,3 +1,4 @@
+% Script to generate Viterbi Fits for Inference traces
 addpath('../utilities');
 %memory assumed for inference
 w = 7;
