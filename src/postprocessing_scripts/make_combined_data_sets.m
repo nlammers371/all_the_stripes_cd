@@ -31,18 +31,20 @@ project = 'eve7stripes_inf_2018_02_20'; %project identifier
 
 %Generate filenames and writepath
 % truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
-id_thing = [ '/w' num2str(w) '_t' num2str(Tres)...
+id_thing = [ '/truncated_inference_w' num2str(w) '_t' num2str(Tres)...
     '_alpha' num2str(round(alpha*10)) '_f' num2str(fluo_field) '_cl' num2str(clipped) ...
     '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) ...
     '/states' num2str(K) '/t_window' num2str(round(t_window)) '/' inference_type '/']; 
 
-DropboxFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve7stripes_data\inference_out\';
-% DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+% DropboxFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve7stripes_data\inference_out\';
+DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
 folder_thing =  [DropboxFolder '/' project '/' id_thing];
 
 OutPath = ['../../dat/' project '/' id_thing];
 mkdir(OutPath)
-load('D:\Data\Nick\projects\all_the_stripes_cd\dat\eve7stripes_inf_2018_02_20\w7_t20_alpha14_f1_cl1_no_ends1_tbins1\states2\t_window30\dp_bootstrap_results\viterbi_fits.mat')
+load('..\..\dat\eve7stripes_inf_2018_02_20\w7_t20_alpha14_f1_cl1_no_ends1_tbins1\states2\t_window30\dp_bootstrap_results\viterbi_fits.mat')
+load('..\..\dat\eve7stripes_inf_2018_02_20\inference_traces_eve7stripes_inf_2018_02_20_dT20.mat');
+
 viterbi_particle_vec = [viterbi_fit_struct.ParticleID];
 
 %---------------------------------Read in Files---------------------------%
@@ -59,7 +61,7 @@ if isempty(file_things)
     error('No file with specified inference parameters found')
 end
 %%% load inference traces 
-load('D:\Data\Nick\projects\all_the_stripes_cd\dat\eve7stripes_inf_2018_02_20\inference_traces_eve7stripes_inf_2018_02_20_dT20.mat');
+
 
 %Iterate through result sets and concatenate into 1 combined struct
 glb_all = struct;

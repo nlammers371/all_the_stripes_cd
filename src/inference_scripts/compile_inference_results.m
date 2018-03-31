@@ -39,8 +39,8 @@ project = 'eve7stripes_inf_2018_02_20'; %project identifier
 id_var = [ '/w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
     '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) ...
     '_tbins' num2str(dynamic_bins) '/states' num2str(K) '/t_window' num2str(t_window) '/' inference_type '/']; 
-DPFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve7stripes_data\inference_out\';
-% DropboxFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+% DPFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve7stripes_data\inference_out\';
+DPFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
 
 f_path =  [DPFolder '/' project '/' id_var '/'];
 OutPath = ['../../dat/' project '/' id_var];
@@ -62,22 +62,23 @@ end
 %%
 %Iterate through result sets and concatenate into 1 combined struct
 inf_struct = struct;
-f_pass = 1;
-for w = 1:length(f_names)
+qqrfe = 1;
+for asfas = 1:length(f_names)
+    disp(qqrfe)
     % load the eve validation results into a structure array 'output'        
-    load([f_path f_names{w}]);        
+    load([f_path f_names{asfas}]);        
     if output.skip_flag == 1 
         continue
-    elseif output.t_window~=t_window*60 || ~ismember(output.t_inf,t_inf*60)
+    elseif output.t_window~=1800 || ~ismember(output.t_inf,t_inf*60)
         continue
     end
     
-    for fn = fieldnames(output)'
-        inf_struct(f_pass).(fn{1}) = output.(fn{1});
+    for fn = fieldnames(output)
+        inf_struct(qqrfe).(fn{1}) = output.(fn{1});
     end
-    inf_struct(f_pass).source = f_names{w};        
-    f_pass = f_pass + 1;
-    disp(f_pass)
+    inf_struct(qqrfe).source = f_names{asfas};        
+    qqrfe = qqrfe + 1;
+    disp(qqrfe)
 end
 
 %%

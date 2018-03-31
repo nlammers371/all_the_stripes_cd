@@ -34,8 +34,8 @@ id_string = [ '/w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10
 
 InfResultPath = ['../../dat/' project '/' id_string];
 %%% Load Data
-load('D:\Data\Nick\projects\all_the_stripes_cd\dat\eve7stripes_inf_2018_02_20\w7_t20_alpha14_f1_cl1_no_ends1_tbins1\states2\t_window30\set_bootstrap_results\hmm_results_mem7_states2.mat') %Inference results
-load('D:\Data\Nick\projects\all_the_stripes_cd\dat\eve7stripes_inf_2018_02_20\inference_traces_eve7stripes_inf_2018_02_20_dT20.mat')
+load('..\..\dat\eve7stripes_inf_2018_02_20\w7_t20_alpha14_f1_cl1_no_ends1_tbins1\states2\t_window30\set_bootstrap_results\hmm_results_mem7_states2.mat') %Inference results
+load('..\..\dat\eve7stripes_inf_2018_02_20\inference_traces_eve7stripes_inf_2018_02_20_dT20.mat')
 % load(['../../dat/' project '/inference_traces_' project '.mat']) % load traces
 inference_traces = trace_struct_final([trace_struct_final.inference_flag]==1);
 particle_id_vec = [inference_traces.ParticleID];
@@ -45,14 +45,16 @@ hmm_regions = [hmm_results.binID];
 alpha = hmm_results(1).alpha;
 dT = hmm_results(1).dT;
 viterbi_fit_struct = struct;
+skipped_stripes = [];
 for i = 1:length(inference_traces)
     stripe_id_vec = inference_traces(i).stripe_id_vec_interp;
-    stripe_id = mode(stripe_id_vec);   
-    hmm_bin = hmm_results(hmm_regions==stripe_id);
+    stripe_id = round(mode(stripe_id_vec),1);   
+    hmm_bin = hmm_results(round(hmm_regions,1)==stripe_id);
     if isempty(hmm_bin)
+        skipped_stripes = [skipped_stripes stripe_id];
         v_fit = struct;
         v_fit.ParticleID = inference_traces(i).ParticleID; 
-        viterbi_fit_struct(i).v_fit = v_fit;
+        viterbi_fit_struct(i).ParticleID = inference_traces(i).ParticleID; 
 %         warning('No inference results found for region. Skipping')
         continue
     end
