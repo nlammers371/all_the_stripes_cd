@@ -1,6 +1,6 @@
 % Script to Conduct HMM Inference on Experimental Data
 close all
-clear all
+clear 
 % addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 savio = 0; % Specify whether inference is being conducted on Savio Cluster
@@ -15,22 +15,22 @@ if savio
         bin_groups{i} = ap_ref_index(savio_groups{i});
     end
 else
-%     bin_groups = {};
-%     for i = 2:22
-%         bin_groups = [bin_groups{:} {round(i/3,1)}];
-%     end
-    bin_groups = [];
+    bin_groups = {};
     for i = 2:22
-        bin_groups = [bin_groups round(i/3,1)];
+        bin_groups = [bin_groups{:} {round(i/3,1)}];
     end
-    bin_groups = {bin_groups};
+%     bin_groups = [];
+%     for i = 2:22
+%         bin_groups = [bin_groups round(i/3,1)];
+%     end
+%     bin_groups = {bin_groups};
 end
 warning('off','all') %Shut off Warnings
 
 %-------------------------------System Vars-------------------------------%
 w = 7; % Memory
 Tres = 20; % Time Resolution
-state_vec = [3]; % State(s) to use for inference
+state_vec = [2]; % State(s) to use for inference
 stop_time_inf = 60; % Specify cut-off time for inference
 min_dp = 10; % min length of traces to include
 clipped = 1; % if 0 use "full" trace with leading and trailing 0's
@@ -55,6 +55,13 @@ eps = 10e-4; % set convergence criteria
 %----------------------------Bootstrap Vars-------------------------------%
 dp_bootstrap = 1;
 set_bootstrap = 0;
+if set_bootstrap
+    out_string = '_set';    
+elseif dp_bootstrap
+    out_string = '_dp';
+else
+    error('inference type unspecified')
+end
 n_bootstrap = 10;
 sample_size = 10000;
 min_dp_per_inf = 1500; % inference will be aborted if fewer present
@@ -70,10 +77,10 @@ alpha = trace_struct_final(1).alpha_frac*w; % Rise Time for MS2 Loops
 binIndex = unique([trace_struct_final.stripe_id_inf]); % Position index
 
 % Set write path (inference results are now written to external directory)
-out_suffix =  ['/' project '/truncated_inference_w' num2str(w) '_t' num2str(Tres)...
+out_suffix =  ['/' project '/w' num2str(w) '_t' num2str(Tres)...
     '_alpha' num2str(round(alpha*10)) '_f' num2str(fluo_field) '_cl' num2str(clipped) ...
     '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) ...
-    '/states' num2str(state_vec(1)) '/t_window' num2str(round(t_window/60)) '/']; 
+    '/K' num2str(state_vec(1)) '_t_window' num2str(round(t_window/60)) out_string '/']; 
 if savio
     out_prefix = '/global/scratch/nlammers/eve7stripes_data/inference_out/';
 else    
@@ -82,16 +89,6 @@ else
 end
 out_dir = [out_prefix out_suffix];
 mkdir(out_dir);
-
-%%%Set write directories
-if set_bootstrap
-    out_dir_single = [out_dir '/set_bootstrap_results/'];    
-elseif dp_bootstrap
-    out_dir_single = [out_dir '/dp_bootstrap_results/'];
-else
-    out_dir_single = [out_dir '/individual_results/'];
-end
-mkdir(out_dir_single);
 
 % apply time filtering 
 trace_struct_filtered = [];
@@ -189,7 +186,7 @@ for K = state_vec
                 fName_sub = ['eveSet_w' num2str(w) '_K' num2str(K) ...
                     '_bin' num2str(round(10*bin_list(1))) '_' num2str(round(10*bin_list(end))) ...
                     '_time' num2str(round(t_inf/60)) '_t' inference_id];                
-                out_file = [out_dir_single '/' fName_sub];
+                out_file = [out_dir '/' fName_sub];
                 % Initialize logL to - infinity
                 logL_max = -Inf;
                 % Extract fluo_data

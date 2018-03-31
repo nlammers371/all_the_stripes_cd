@@ -1,7 +1,7 @@
 % Script to track stripe activity centers and (appx) mRNA levels across
 % space and time
 close all
-clear all
+clear 
 
 % set filenames
 project = 'eve7stripes_inf_2018_03_27'; %Project Identifier
@@ -326,7 +326,8 @@ for i = 1:length(set_index)
         end                
         schnitz_struct(ind).stripe_id_inf = mode(nc_stripe_id_vec);
         schnitz_struct(ind).stripe_id_vec = nc_stripe_id_vec;
-    end    
+    end
+    stripe_pos_struct(i).t_vec = t_vec;
     disp(['Completed ' num2str(i) ' of ' num2str(length(set_index))])    
 end
 save(stripe_save_name, 'stripe_pos_struct')

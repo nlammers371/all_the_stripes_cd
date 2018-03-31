@@ -1,4 +1,6 @@
-% Compile results into summary structure. Generate summary plots
+function compile_inference_results
+
+%Compile results into summary structure. Generate summary plots
 addpath('../utilities/');
 clear 
 close all
@@ -9,7 +11,6 @@ Tres = 20; %Time Resolution
 alpha = 1.4; % MS2 rise time in time steps
 fluo_type = 1; % type of spot integration used
 clipped = 1; % if 0, traces are taken to be full length of nc14
-stop_time_inf = 60;
 clipped_ends = 1;
 dynamic_bins = 1; % if 1, use time-resolved region classifications
 t_window = 30; % size of sliding window used
@@ -29,18 +30,16 @@ for i = 1:length(stripe_range)
         {['stripe ' num2str(i) ' (P)']}];
 end
 
-% id variables
-datatype = 'weka';
-inference_type = 'set_bootstrap_results';
+%id variables
+inference_type = 'set';
 project = 'eve7stripes_inf_2018_02_20'; %project identifier
 
 %Generate filenames and writepath
-% truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
+truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
 id_var = [ '/w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
     '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) ...
-    '_tbins' num2str(dynamic_bins) '/states' num2str(K) '/t_window' num2str(t_window) '/' inference_type '/']; 
-% DPFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve7stripes_data\inference_out\';
-DPFolder = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+    '_tbins' num2str(dynamic_bins) '/K' num2str(K) '_t_window' num2str(t_window) '_' inference_type '/']; 
+DPFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve7stripes_data\inference_out\';
 
 f_path =  [DPFolder '/' project '/' id_var '/'];
 OutPath = ['../../dat/' project '/' id_var];
@@ -59,29 +58,28 @@ end
 if isempty(f_names)
     error('No file with specified inference parameters found')
 end
-%%
+%
 %Iterate through result sets and concatenate into 1 combined struct
 inf_struct = struct;
-qqrfe = 1;
-for asfas = 1:length(f_names)
-    disp(qqrfe)
-    % load the eve validation results into a structure array 'output'        
-    load([f_path f_names{asfas}]);        
+f_pass = 1;
+for f = 1:length(f_names)
+    %load the eve validation results into a structure array 'output'        
+    load([f_path f_names{f}],'output');        
     if output.skip_flag == 1 
         continue
-    elseif output.t_window~=1800 || ~ismember(output.t_inf,t_inf*60)
+    elseif output.t_window~=t_window*60 || ~ismember(output.t_inf,t_inf*60)
         continue
     end
     
-    for fn = fieldnames(output)
-        inf_struct(qqrfe).(fn{1}) = output.(fn{1});
+    for fn = fieldnames(output)'
+        inf_struct(f_pass).(fn{1}) = output.(fn{1});
     end
-    inf_struct(qqrfe).source = f_names{asfas};        
-    qqrfe = qqrfe + 1;
-    disp(qqrfe)
+    inf_struct(f_pass).source = f_names{f};        
+    f_pass = f_pass + 1;
+    disp(f_pass)
 end
-
 %%
+
 %%% ------------------------------Fig Calculations-------------------------%
 %Adjust rates as needed (address negative off-diagonal values)
 %Define convenience Arrays and vectors
@@ -343,47 +341,4 @@ xlabel('stripe');
 set(gca,'xtick',1:7,'xticklabel',1:7)
 saveas(occ_fig, [hmmPath '/occupancy_trends.png'], 'png');
 saveas(occ_fig, [hmmPath '/occupancy_trends.pdf'], 'pdf');
-%%
-% Dwell times
-dwell_fig = figure;
-hold on
-if plot_scatters
-    for k = 1:K
-        scatter(bin_vec, dwell_all(k,:),MarkerSize,color_cell{k},'s',...
-            'filled', 'MarkerFaceAlpha',.2,'MarkerEdgeAlpha',0);
-    end
 end
-for k = 1:K
-    e = errorbar(bin_range_vec, avg_dwell(k,:),std_dwell(k,:),'LineWidth',1,'Color','black');
-    e.CapSize = 0;
-    scatter(bin_range_vec, avg_dwell(k,:), MarkerSize, color_cell{k},...
-        'o','filled', 'MarkerEdgeColor', 'black') ;
-end
-axis([(min(bin_range_vec)-1) (max(bin_range_vec)+1) 0 1.2*max(avg_dwell(:))])
-title('Dwell Times by AP Position');
-ylabel('Dwell Times (min)');
-xlabel('relative AP position (%)');
-set(gca,'xtick',bin_range_vec,'xticklabel',x_labels)
-saveas(dwell_fig, [hmmPath '/dwell_time_trends.png'], 'png');
-saveas(dwell_fig, [hmmPath '/dwell_time_trends.pdf'], 'pdf');
-
-% Noise
-noise_fig = figure;
-hold on
-if plot_scatters    
-    scatter(bin_vec, noise_all,MarkerSize,[.3 .3 .3],'s',...
-            'filled', 'MarkerFaceAlpha',.2,'MarkerEdgeAlpha',0);    
-end
-e = errorbar(bin_range_vec, avg_noise,std_noise,'LineWidth',1,'Color',[.3 .3 .3]);
-e.CapSize = 0;
-scatter(bin_range_vec, avg_noise, MarkerSize, [.3 .3 .3],...
-    'o','filled', 'MarkerEdgeColor', 'black') ;
-
-axis([(min(bin_range_vec)-1) (max(bin_range_vec)+1) 0 1.2*max(avg_noise(:))])
-title('Estimated Noise by AP Position');
-ylabel('Noise (AU)');
-xlabel('relative AP position (%)');
-set(gca,'xtick',bin_range_vec,'xticklabel',x_labels)
-saveas(noise_fig, [hmmPath '/noise_trends.png'], 'png');
-saveas(noise_fig, [hmmPath '/noise_trends.pdf'], 'pdf');
-
