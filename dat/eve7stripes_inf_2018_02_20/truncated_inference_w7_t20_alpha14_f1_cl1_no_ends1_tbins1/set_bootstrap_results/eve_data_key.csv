@@ -5,6 +5,8 @@ time,Time in seconds. Interpolated to 20s res.
 fluo,Interpolated fluorescence
 p_off,Probability promoter is in  active state
 p_on,Probability promoter is in inactive state
+viterbi_state,Viterbi-decoded promoter state (1=off 2=on)
+viterbi_fluo,Implied Viterbi Fluorescence
 k_on,On rate. Value for each row reflects average taken across all bootstrap inference results for the relevant region in time and space
 k_off,Off rate. Value for each row reflects average taken across all bootstrap inference results for the relevant region in time and space
 initiation_rate_off,Basal initiation rate. Value for each row reflects average taken across all bootstrap inference results for the relevant region in time and space
