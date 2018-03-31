@@ -1,5 +1,6 @@
 % Script to generate Viterbi Fits for Inference traces
-addpath('D:\Data\Nick\projects\hmmm\src\utilities\');
+% addpath('D:\Data\Nick\projects\hmmm\src\utilities\');
+addpath('E:\Nick\projects\hmmm\src\utilities\');
 %------------------------------Set System Params--------------------------%
 alpha = 1.4; % MS2 rise time in time steps
 fluo_type = 1; % type of spot integration used
@@ -7,7 +8,7 @@ clipped = 1; % if 0, traces are taken to be full length of nc14
 stop_time_inf = 60;
 clipped_ends = 1;
 dynamic_bins = 1; % if 1, use time-resolved region classifications
-t_window = 30; % size of sliding window used
+t_window = 50; % size of sliding window used
 %-----------------------------ID Variables--------------------------------%
 stripe_range = 1:7;
 bin_range_vec = [];
@@ -24,18 +25,19 @@ Tres = 20; %time resolution
 
 % id variables
 datatype = 'weka';
-inference_type = 'dp_bootstrap_results';
+inference_type = 'dp';
 project = 'eve7stripes_inf_2018_02_20'; %project identifier
 
 %%% Generate filenames and writepath
 id_string = [ '/w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
     '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) ...
-    '_tbins' num2str(dynamic_bins) '/states' num2str(K) '/t_window' num2str(t_window)  '/' inference_type '/']; 
+    '_tbins' num2str(dynamic_bins) '/states' num2str(K) '_t_window' num2str(t_window)  '_' inference_type '/']; 
 
 InfResultPath = ['../../dat/' project '/' id_string];
 %%% Load Data
 load('..\..\dat\eve7stripes_inf_2018_02_20\w7_t20_alpha14_f1_cl1_no_ends1_tbins1\states2\t_window30\set_bootstrap_results\hmm_results_mem7_states2.mat') %Inference results
 load('..\..\dat\eve7stripes_inf_2018_02_20\inference_traces_eve7stripes_inf_2018_02_20_dT20.mat')
+%%
 % load(['../../dat/' project '/inference_traces_' project '.mat']) % load traces
 inference_traces = trace_struct_final([trace_struct_final.inference_flag]==1);
 particle_id_vec = [inference_traces.ParticleID];
