@@ -1,20 +1,7 @@
-function compile_inference_results
+function inf_struct = compile_inference_results(project,inference_type,w,K,Tres,alpha,fluo_type,clipped,...
+    clipped_ends,dynamic_bins,t_window,t_inf,DPFolder)
 
 %Compile results into summary structure. Generate summary plots
-addpath('../utilities/');
-clear 
-close all
-%------------------------------Set System Params--------------------------%
-w = 7; %memory assumed for inference
-K = 2; %states used for final inference
-Tres = 20; %Time Resolution
-alpha = 1.4; % MS2 rise time in time steps
-fluo_type = 1; % type of spot integration used
-clipped = 1; % if 0, traces are taken to be full length of nc14
-clipped_ends = 1;
-dynamic_bins = 1; % if 1, use time-resolved region classifications
-t_window = 30; % size of sliding window used
-t_inf = 35;
 %-----------------------------ID Variables--------------------------------%
 stripe_range = 1:7;
 bin_range_vec = [];
@@ -24,25 +11,21 @@ for i = 1:length(stripe_range)
     end
 end
     
-x_labels = {};
-for i = 1:length(stripe_range)
-    x_labels = [x_labels{:} {['stripe ' num2str(i) ' (A)']} {['stripe ' num2str(i) ' (C)']}...
-        {['stripe ' num2str(i) ' (P)']}];
-end
+% x_labels = {};
+% for i = 1:length(stripe_range)
+%     x_labels = [x_labels{:} {['stripe ' num2str(i) ' (A)']} {['stripe ' num2str(i) ' (C)']}...
+%         {['stripe ' num2str(i) ' (P)']}];
+% end
 
-%id variables
-inference_type = 'set';
-project = 'eve7stripes_inf_2018_02_20'; %project identifier
+
 
 %Generate filenames and writepath
-truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
 id_var = [ '/w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
     '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) ...
     '_tbins' num2str(dynamic_bins) '/K' num2str(K) '_t_window' num2str(t_window) '_' inference_type '/']; 
-DPFolder = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\eve7stripes_data\inference_out\';
 
-f_path =  [DPFolder '/' project '/' id_var '/'];
-OutPath = ['../../dat/' project '/' id_var];
+f_path =  [DPFolder  project  id_var ];
+OutPath = ['../../dat/' project  id_var];
 FigPath = ['../../fig/experimental_system/' project '/' id_var];
 mkdir(OutPath)
 mkdir(FigPath)
@@ -56,12 +39,13 @@ for i = 1:length(files)
     end
 end
 if isempty(f_names)
+    disp(f_path)
     error('No file with specified inference parameters found')
 end
 %
 %Iterate through result sets and concatenate into 1 combined struct
 inf_struct = struct;
-f_pass = 1;
+f_pass = 0;
 for f = 1:length(f_names)
     %load the eve validation results into a structure array 'output'        
     load([f_path f_names{f}],'output');        
@@ -72,19 +56,26 @@ for f = 1:length(f_names)
     end
     
     for fn = fieldnames(output)'
-        inf_struct(f_pass).(fn{1}) = output.(fn{1});
+        inf_struct(f_pass+1).(fn{1}) = output.(fn{1});
     end
-    inf_struct(f_pass).source = f_names{f};        
+    inf_struct(f_pass+1).source = f_names{f};        
     f_pass = f_pass + 1;
     disp(f_pass)
 end
-%%
-
+% %%
+% 
 %%% ------------------------------Fig Calculations-------------------------%
 %Adjust rates as needed (address negative off-diagonal values)
 %Define convenience Arrays and vectors
 alpha = inf_struct(1).alpha;
-bin_vec = [inf_struct.stripe_id];
+bin_vec = [];
+for i = 1:length(inf_struct)
+    if length(inf_struct(i).stripe_id) == 21
+        bin_vec = [bin_vec 0];
+    else        
+        bin_vec = [bin_vec mean(inf_struct(i).stripe_id)];
+    end
+end 
 bin_range_vec = unique(bin_vec);
 time_vec = [inf_struct.t_inf];
 time_index = unique(time_vec);
@@ -233,112 +224,113 @@ for i = 1:length(bin_range_vec)
     end
 end
 save([OutPath '/hmm_results_mem' num2str(w)  '_states' num2str(K)  '.mat'],'hmm_results')
-%%
-%%% Make HMM Result Summary Figures
-plot_times = time_index([2,4,6,8]);
-close all
-% make sub-directory for HMM plots
-hmmPath = [FigPath '/hmm_figs/'];
-mkdir(hmmPath);
-cm = jet(128);
-increment = floor(size(cm,1)/K);
-sub_inc = floor(increment/length(plot_times));
-color_pallette = zeros(K,3,length(plot_times));
-for k = 1:K
-    for t = 1:length(plot_times)
-        color_pallette(k,:,t) = cm((k-1)*increment + (t-1)*sub_inc + 1,:);
-    end
-end
-
-
-for j = 1:K
-    rate_fig = figure;
-    hold on    
-    index = 1:K;
-    index = index(index~=j);                
-    for k = 1:(K-1)
-        for t = 1:length(plot_times)
-            col = sub2ind([K,K],index(k),j);    
-            e = errorbar(bin_range_vec,reshape(avg_R_fit(time_index==plot_times(t),col,:),1,[]),...
-                reshape(std_R_fit(time_index==plot_times(t),col,:),1,[]),'LineWidth',1,'Color','black');        
-            e.CapSize = 0;
-            if plot_scatters
-                scatter(bin_vec(time_vec==plot_times(t)), R_fit_array(time_vec==plot_times(t),col), ...
-                    MarkerSize, color_pallette(index(k),:,t), 's', 'filled', 'MarkerFaceAlpha', 0.2,...
-                    'MarkerEdgeAlpha',0) ;                            
-            end
-        end
-    end    
-    for k = 1:(K-1)        
-        for t = 1:length(plot_times)
-            r_fit = reshape(avg_R_fit(time_index==plot_times(t),col,:),1,[]);        
-            plot(bin_range_vec, r_fit,'black','LineWidth',1);  
-        end
-    end
-    legend_cell = {};          
-    s = [];
-    for k = 1:(K-1)        
-        for t = 1:length(plot_times)
-            legend_cell = {legend_cell{:} ['To ' num2str(index(k)) ' (t=' num2str(round(plot_times(t)/60)) ')']};        
-            s = [s scatter(bin_range_vec, reshape(avg_R_fit(time_index==plot_times(t),col,:),1,[]),...
-                MarkerSize, color_pallette(index(k),:,t), 'o', 'filled', 'MarkerEdgeColor', 'black')];
-        end
-    end  
-    legend(s,legend_cell{:},'Location','southeast')
-%     axis([min(bin_range)-1 max(bin_range) + 1 0 max(max(max(R_fit_array(index,j,:))))*1.05]);
-    title(['Outflow Rates from State ' num2str(j)]); 
-    xlabel('stripe')
-    ylabel('events per minute') 
-    axis([0 8 0 max(max(avg_R_fit(:,col,:)))])
-    set(gca,'xtick',1:7,'xticklabel',1:7)
-    saveas(rate_fig, [hmmPath '/rates_from' num2str(j) '.png'], 'png');
-    saveas(rate_fig, [hmmPath '/rates_from' num2str(j) '.pdf'], 'pdf');
-end
-%%
-% Initiation Rates
-init_fig  = figure;
-hold on
-% if plot_scatters
-%     for k = 1:K
-%         scatter(bin_vec, initiation_rates(k,:),MarkerSize,color_cell{k},'s',...
-%             'filled', 'MarkerFaceAlpha',.2,'MarkerEdgeAlpha',0);
+disp(['compiled results saved to: ' OutPath])
+% %%
+% %%% Make HMM Result Summary Figures
+% plot_times = time_index([2,4,6,8]);
+% close all
+% % make sub-directory for HMM plots
+% hmmPath = [FigPath '/hmm_figs/'];
+% mkdir(hmmPath);
+% cm = jet(128);
+% increment = floor(size(cm,1)/K);
+% sub_inc = floor(increment/length(plot_times));
+% color_pallette = zeros(K,3,length(plot_times));
+% for k = 1:K
+%     for t = 1:length(plot_times)
+%         color_pallette(k,:,t) = cm((k-1)*increment + (t-1)*sub_inc + 1,:);
 %     end
 % end
-for k = 1:K
-    for t = 1:length(plot_times)
-        e = errorbar(bin_range_vec, avg_initiation(k,:,time_index==plot_times(t)),std_initiation(k,:,time_index==plot_times(t))...
-            ,'LineWidth',1,'Color','black');
-        e.CapSize = 0;
-        scatter(bin_range_vec, avg_initiation(k,:,time_index==plot_times(t)), MarkerSize, color_pallette(k,:,t),...
-            'o','filled', 'MarkerEdgeColor', 'black') ;
-    end
-end
-axis([(min(bin_range_vec)-1) (max(bin_range_vec)+1) 0 1.1*max(initiation_rates(:))])
-title('Initiation Rate');
-xlabel('stripe');
-ylabel('Initiation Rate (A.U per minute)');
-set(gca,'xtick',1:7,'xticklabel',1:7)
-saveas(init_fig, [hmmPath '/initiation_rates.png'], 'png');
-saveas(init_fig, [hmmPath '/initition_rates.pdf'], 'pdf');
-%%
-% Occupancy
-occ_fig = figure;
-hold on
-
-for k = 1:K
-    for t = 1:length(plot_times)
-        e = errorbar(bin_range_vec, avg_occupancy(k,:,time_index==plot_times(t)),...
-            std_occupancy(k,:,time_index==plot_times(t)),'LineWidth',1,'Color','black');
-        e.CapSize = 0;
-        scatter(bin_range_vec, avg_occupancy(k,:,time_index==plot_times(t)), MarkerSize, color_pallette(k,:,t),...
-            'o','filled', 'MarkerEdgeColor', 'black') ;
-    end
-end
-axis([(min(bin_range_vec)-1) (max(bin_range_vec)+1) 0 1.2*max(max(occupancy))])
-title('State Occupancy by AP Position');
-ylabel('Occupancy Share');
-xlabel('stripe');
-set(gca,'xtick',1:7,'xticklabel',1:7)
-saveas(occ_fig, [hmmPath '/occupancy_trends.png'], 'png');
-saveas(occ_fig, [hmmPath '/occupancy_trends.pdf'], 'pdf');
-end
+% 
+% 
+% for j = 1:K
+%     rate_fig = figure;
+%     hold on    
+%     index = 1:K;
+%     index = index(index~=j);                
+%     for k = 1:(K-1)
+%         for t = 1:length(plot_times)
+%             col = sub2ind([K,K],index(k),j);    
+%             e = errorbar(bin_range_vec,reshape(avg_R_fit(time_index==plot_times(t),col,:),1,[]),...
+%                 reshape(std_R_fit(time_index==plot_times(t),col,:),1,[]),'LineWidth',1,'Color','black');        
+%             e.CapSize = 0;
+%             if plot_scatters
+%                 scatter(bin_vec(time_vec==plot_times(t)), R_fit_array(time_vec==plot_times(t),col), ...
+%                     MarkerSize, color_pallette(index(k),:,t), 's', 'filled', 'MarkerFaceAlpha', 0.2,...
+%                     'MarkerEdgeAlpha',0) ;                            
+%             end
+%         end
+%     end    
+%     for k = 1:(K-1)        
+%         for t = 1:length(plot_times)
+%             r_fit = reshape(avg_R_fit(time_index==plot_times(t),col,:),1,[]);        
+%             plot(bin_range_vec, r_fit,'black','LineWidth',1);  
+%         end
+%     end
+%     legend_cell = {};          
+%     s = [];
+%     for k = 1:(K-1)        
+%         for t = 1:length(plot_times)
+%             legend_cell = {legend_cell{:} ['To ' num2str(index(k)) ' (t=' num2str(round(plot_times(t)/60)) ')']};        
+%             s = [s scatter(bin_range_vec, reshape(avg_R_fit(time_index==plot_times(t),col,:),1,[]),...
+%                 MarkerSize, color_pallette(index(k),:,t), 'o', 'filled', 'MarkerEdgeColor', 'black')];
+%         end
+%     end  
+%     legend(s,legend_cell{:},'Location','southeast')
+% %     axis([min(bin_range)-1 max(bin_range) + 1 0 max(max(max(R_fit_array(index,j,:))))*1.05]);
+%     title(['Outflow Rates from State ' num2str(j)]); 
+%     xlabel('stripe')
+%     ylabel('events per minute') 
+%     axis([0 8 0 max(max(avg_R_fit(:,col,:)))])
+%     set(gca,'xtick',1:7,'xticklabel',1:7)
+%     saveas(rate_fig, [hmmPath '/rates_from' num2str(j) '.png'], 'png');
+%     saveas(rate_fig, [hmmPath '/rates_from' num2str(j) '.pdf'], 'pdf');
+% end
+% %%
+% % Initiation Rates
+% init_fig  = figure;
+% hold on
+% % if plot_scatters
+% %     for k = 1:K
+% %         scatter(bin_vec, initiation_rates(k,:),MarkerSize,color_cell{k},'s',...
+% %             'filled', 'MarkerFaceAlpha',.2,'MarkerEdgeAlpha',0);
+% %     end
+% % end
+% for k = 1:K
+%     for t = 1:length(plot_times)
+%         e = errorbar(bin_range_vec, avg_initiation(k,:,time_index==plot_times(t)),std_initiation(k,:,time_index==plot_times(t))...
+%             ,'LineWidth',1,'Color','black');
+%         e.CapSize = 0;
+%         scatter(bin_range_vec, avg_initiation(k,:,time_index==plot_times(t)), MarkerSize, color_pallette(k,:,t),...
+%             'o','filled', 'MarkerEdgeColor', 'black') ;
+%     end
+% end
+% axis([(min(bin_range_vec)-1) (max(bin_range_vec)+1) 0 1.1*max(initiation_rates(:))])
+% title('Initiation Rate');
+% xlabel('stripe');
+% ylabel('Initiation Rate (A.U per minute)');
+% set(gca,'xtick',1:7,'xticklabel',1:7)
+% saveas(init_fig, [hmmPath '/initiation_rates.png'], 'png');
+% saveas(init_fig, [hmmPath '/initition_rates.pdf'], 'pdf');
+% %%
+% % Occupancy
+% occ_fig = figure;
+% hold on
+% 
+% for k = 1:K
+%     for t = 1:length(plot_times)
+%         e = errorbar(bin_range_vec, avg_occupancy(k,:,time_index==plot_times(t)),...
+%             std_occupancy(k,:,time_index==plot_times(t)),'LineWidth',1,'Color','black');
+%         e.CapSize = 0;
+%         scatter(bin_range_vec, avg_occupancy(k,:,time_index==plot_times(t)), MarkerSize, color_pallette(k,:,t),...
+%             'o','filled', 'MarkerEdgeColor', 'black') ;
+%     end
+% end
+% axis([(min(bin_range_vec)-1) (max(bin_range_vec)+1) 0 1.2*max(max(occupancy))])
+% title('State Occupancy by AP Position');
+% ylabel('Occupancy Share');
+% xlabel('stripe');
+% set(gca,'xtick',1:7,'xticklabel',1:7)
+% saveas(occ_fig, [hmmPath '/occupancy_trends.png'], 'png');
+% saveas(occ_fig, [hmmPath '/occupancy_trends.pdf'], 'pdf');
+% end
