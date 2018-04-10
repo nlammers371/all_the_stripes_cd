@@ -50,15 +50,18 @@ load([DataPath 'viterbi_fits_ti25_tw50.mat'])
 v_agg = viterbi_fit_struct;
 % load traces
 load('..\..\dat\eve7stripes_inf_2018_02_20\inference_traces_eve7stripes_inf_2018_02_20_dT20.mat');
-%%
+
 inference_traces = trace_struct_final([trace_struct_final.inference_flag]==1);
 trace_particle_vec = [inference_traces.ParticleID];
 inf_particle_index = [inference_traces.ParticleID];
+inf_set_index = [inference_traces.setID];
 va_particle_index = [v_agg.ParticleID];
 vs_particle_index = [v_specific.ParticleID];
 hmm_stripe_index = [hmm_results.binID];
-for a = 1:length(inf_particle_index)            
+for k = 1:length(inf_particle_index)            
+    a = length(inf_particle_index) - k + 1;
     ParticleID = inf_particle_index(a);
+    setID = inf_set_index(a);
     % extract relevant particle metrics    
     trace_time = inference_traces(inf_particle_index==ParticleID).time_interp;
     trace_fluo = inference_traces(inf_particle_index==ParticleID).fluo_interp;                
@@ -90,20 +93,20 @@ for a = 1:length(inf_particle_index)
     setID_vec = repelem(setID,length(trace_time))';
     stripe_id_long = repelem(stripe_id,length(trace_time))';
     
-    trace_mat = [pID_vec double(setID_vec) double(stripe_id_long) double(trace_time') trace_fluo' ...
+    trace_mat = [round(pID_vec,4) double(setID_vec) double(stripe_id_long) double(trace_time') trace_fluo' ...
         double(vs_mat) double(va_mat) R_mat double(r_mat)];
-    trace_mat = trace_mat(1:end-w-1,:);    
-    if a == 1
+    trace_mat = trace_mat(1:end-w-1,:);        
+    if k == 1
         trace_mat_long = trace_mat;
     else
         trace_mat_long = [trace_mat_long ; trace_mat];
     end
 end
-
 % remove NaN rows
 % trace_mat_long = trace_mat_long(nan_index,:);
 header = {'particle_id', 'set_id', 'stripe_id','time', 'fluo', 'v_state_sp', 'v_fluo_sp'...
           'v_state_agg', 'v_fluo_agg', 'k_on', 'k_off', 'initiation_rate_off', 'initiation_rate_on'};
 csvwrite_with_headers([DataPath '\eve_data_longform.csv'], ...
-                       trace_mat_long, header); 
+                       trace_mat_long, header,9); 
+                 
 save([DataPath 'eve_data_longform.mat'],'trace_mat_long')                   

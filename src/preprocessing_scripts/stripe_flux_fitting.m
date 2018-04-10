@@ -19,24 +19,27 @@ stripe_save_name = [data_path 'stripe_pos_' project '.mat'];
 load(trace_name); % particle info
 load(fov_name); % ap and stripe info at pixel level
 load(nucleus_name);
-save_spline_figs = 0; % if 1 generates spline figs
+save_spline_figs = 1; % if 1 generates spline figs
 %% generate fluorescence maps 
+%%% Color Info
 cm = jet(128);
 increment = floor(size(cm,1)/7);
+%%% fit variables
 max_disp = 60; % max permissible fluo dispersion for stripe classfication 
 stripe_radius = 35; % pixels .015;
 kernel_radius = 60; % radius of gauss kernel...nucleus diameter ~= 20-25
-kernel_sigma = 35; % this is kind of arbitrary
+kernel_sigma = 25; % this is kind of arbitrary
 [x_ref, y_ref] = meshgrid(1:2*kernel_radius+1,1:2*kernel_radius+1);
 x_ref = x_ref - kernel_radius - 1;
 y_ref = y_ref - kernel_radius - 1;
 r_mat = sqrt(x_ref.^2 + y_ref.^2);
 g_kernel = exp(-(r_mat/(2*kernel_sigma))); % gauss kernel
-% time stuff
-t_window = 2; % lag/lead size in minutes
-t_vec = 25:50;
-t_start_partition = min(t_vec); % first time to use for partitioning
-% make indexing vectors for traces
+
+%%% time stuff
+t_window = 2; % lag/lead averaging window size in minutes
+t_vec = 25:50; %start fitting stripes at 25 min
+
+%%% make indexing vectors for traces
 xPos_vec_particle = [];
 yPos_vec_particle = [];
 mean_xPos_vec_particle = [];
@@ -84,7 +87,6 @@ end
 
 set_index = unique(set_vec_particle);
 stripe_class_vec = NaN(1,length(trace_struct));
-
 stripe_pos_struct = struct; % save stripe location arrays
 for i = 1:length(set_index)
     xp_set_vec = xPos_vec_particle(set_vec_particle==set_index(i));
@@ -125,6 +127,8 @@ for i = 1:length(set_index)
         spline_mat = NaN(size(stripe_mat,1),length(stripe_id_vec)); % spline fits
         for k = 1:length(stripe_id_vec)
             stripe_id = stripe_id_vec(k);            
+            x_vec = [];
+            y_vec = [];
             for y = 1:size(stripe_mat,1)
                 y_strip =  gauss_array(y,:);
                 y_strip(stripe_mat(y,:)~=stripe_id) = 0;                
@@ -132,12 +136,29 @@ for i = 1:length(set_index)
                 mi = sum(indices.*y_strip)/sum(y_strip);                
                 centroid_mat(y,k) = mi;
                 dispersion_mat(y,k) = std(indices,y_strip); % weighted std
+                %%% apply weights
+                wt_vec = floor(y_strip/100);
+                if max(wt_vec) == 0
+                    continue
+                end
+                ind_wt_mat = repmat(indices,max(wt_vec),1);
+                wt_mat = repmat(wt_vec,max(wt_vec),1);
+                [x_grid,y_grid] = meshgrid(1:size(wt_mat,2),1:size(wt_mat,1));
+                ind_wt_mat(y_grid>wt_mat) = 0;
+                
+                ind_wt_mat = ind_wt_mat(ind_wt_mat>0);
+                ind_wt_vec = reshape(ind_wt_mat,1,[]);
+                x_vec = [x_vec ind_wt_vec];
+                y_vec = [y_vec repelem(y,length(ind_wt_vec))];                
             end            
             center_vec = centroid_mat(:,k);
-            y_vec = (1:size(stripe_mat,1))';
-            f = fit(y_vec(~isnan(center_vec)),centroid_mat(~isnan(center_vec),k),'smoothingspline',...
-                'SmoothingParam',0.01);            
-            spline_mat(:,k) = feval(f,1:size(stripe_mat,1));
+            y_vec_sp = (1:size(stripe_mat,1))';
+%             f = fit(y_vec_sp(~isnan(center_vec)),centroid_mat(~isnan(center_vec),k),'smoothingspline',...
+%                 'SmoothingParam',0.01);    
+            pp = polyfit(y_vec,x_vec,4);
+            poly = polyval(pp,unique(y_vec));
+%             error('afsa')
+            spline_mat(:,k) = poly;
         end
         if save_spline_figs
             centroid_fig = figure;
@@ -167,8 +188,8 @@ for i = 1:length(set_index)
     
     close all        
     %%%------------- Make time-dependent inference regions -------------%%%
-    mean_fluo_mat = nanmean(temp_fluo_array(:,:,t_vec>=t_start_partition),3);
-    mean_center_mat = round(nanmean(temp_spline_mat(:,:,t_vec>=t_start_partition),3));
+    mean_fluo_mat = nanmean(temp_fluo_array,3);
+    mean_center_mat = round(nanmean(temp_spline_mat,3));
     stripe_id_mat_full = NaN(size(stripe_mat,1),size(stripe_mat,2),length(t_vec));         
     for t = 1:length(t_vec)        
         center_mat = round(temp_spline_mat(:,:,t));
@@ -204,8 +225,8 @@ for i = 1:length(set_index)
             end
         end
     end
-    mode_stripe_id_mat = mode(stripe_id_mat_full(:,:,t_vec>=t_start_partition),3);
-    mean_stripe_id_mat = mean(stripe_id_mat_full(:,:,t_vec>=t_start_partition),3);
+    mode_stripe_id_mat = mode(stripe_id_mat_full,3);
+    mean_stripe_id_mat = mean(stripe_id_mat_full,3);
     stripe_pos_struct(i).stripe_id_mat = stripe_id_mat_full;
      
     stripe_RGB = NaN(size(stripe_mat,1),size(stripe_mat,2),3);    

@@ -1,6 +1,6 @@
 % Script to Compile Data Sets and Find Stripe Centers
 close all
-clear all
+clear 
 %------------------------Set Path Specs, ID Vars------------------------%
 FolderPath = 'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\';
 project = 'eve7stripes_inf_2018_03_27'; %Project Identifier
@@ -121,8 +121,7 @@ for i = 1:length(cp_filenames) % Loop through filenames
         %Creat versions with all intervening frames present (missing frames
         %appear as NaNs
         trace_full = raw_trace(trace_start:trace_stop)';        
-        % skip small fragments
-        short_flag = 0;
+        % skip small fragments      
         if length(raw_trace(~isnan(raw_trace))) < 3            
             continue
         end
@@ -146,8 +145,8 @@ for i = 1:length(cp_filenames) % Loop through filenames
         yPos = fov_yPos_raw(ismember(pt_frames,frames_full));        
         pt_frames = pt_frames(ismember(pt_frames,frames_full));
         % look for edge issues
-        edge_frames = ((xDim-xPos) <= snippet_size/2)|(xPos <= snippet_size/2)|...
-                          ((yDim-yPos) <= snippet_size/2)|(yPos <= snippet_size/2);
+        edge_frames = ((xDim-xPos) <= snippet_size)|(xPos <= snippet_size)|...
+                          ((yDim-yPos) <= snippet_size)|(yPos <= snippet_size);
         trace_struct(j_pass).edge_flag = (sum(edge_frames)>0);        
         % Record info in trace struct        
         trace_struct(j_pass).cp_frames = pt_frames; % Keep track of frame correspondence
@@ -194,7 +193,6 @@ for i = 1:length(schnitz_struct)
         schnitz_struct(i).ParticleID = NaN;
     end
 end
-%%% !!!Note I find NO edge cases...this seems unreasonable. Need to double check
 
 %%% Look for trace fragments that belong together. Stitch them up
 
@@ -302,8 +300,8 @@ end
 
 %%
 %--------------Map total fluorecence to AP position for each set----------%
-% Only use tp after 30 minutes to ensure mature stripes
-start_time = 30*60;
+% exclude 1st 15 minutes since no mature stripes are present
+start_time = 25*60;
 stop_time = 60*60;
 %Create Arrays to store total fluorecence and # data points
 %Careful with rounding errors here...
