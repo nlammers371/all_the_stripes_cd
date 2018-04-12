@@ -1,0 +1,15 @@
+stripe_id,region id variable
+k_on_mean,on rate mean
+k_off_mean,off rate mean
+k_on_ste,on rate bootstrap error
+k_off_ste,off rate bootstrap error
+r_off_mean,off state initiation rate (basal)
+r_on_mean,on state initiation rate
+r_off_ste,off state error
+r_on_ste,on state error
+observed_production,observed production rate (trace fluorescence)
+predicted_production,all model params
+predicted_less_r,assuming constant r
+predicted_less_k_on,assuming constant k_on
+predicted_less_k_off,assuming constant k_off
+predicted_only_k_on,assuming constant k_off and r
