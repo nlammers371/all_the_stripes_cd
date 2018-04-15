@@ -17,7 +17,7 @@ fov_save_name = [data_path 'fov_partitions.mat'];
 load(trace_name); % particle info
 load(nucleus_name);
 load(cluster_name);
-%%
+
 xDim = 1024;
 yDim = 256;
 track_times = cluster_struct.track_times;
@@ -66,14 +66,14 @@ for i = 1:length(set_index)
         a_vec = a_mat_pix_interp(t,:);
         p_vec = p_mat_pix_interp(t,:);
         c_vec_pix = c_mat_pix_interp(t,:);
-        c_vec_ap = c_mat_ap_interp(t,:);
+        c_vec_ap = c_mat_pix_interp(t,:);
         stripe_id_vec = find(~isnan(p_vec));
         a_vec = a_vec(~isnan(p_vec));        
         p_vec = p_vec(~isnan(p_vec));        
         c_vec_pix = c_vec_pix(~isnan(c_vec_pix));        
-        
+        c_vec_pix = c_vec_pix(~isnan(c_vec_pix));        
         set_centroids_pix(t,stripe_id_vec) = c_vec_pix;
-        set_centroids_ap(t,:) = c_vec_ap;
+        set_centroids_ap(t,stripe_id_vec) = c_vec_pix;
         for j = 1:length(p_vec)            
             set_stripe_map(:,a_vec(j):p_vec(j),t) = stripe_id_vec(j);
         end           
@@ -82,7 +82,6 @@ for i = 1:length(set_index)
     fov_stripe_partitions(i).plot_times = plot_times;    
     fov_stripe_partitions(i).stripe_id_mat = set_stripe_map;
     fov_stripe_partitions(i).stripe_centroids = set_centroids_pix;
-    fov_stripe_partitions(i).stripe_centroids_ap = set_centroids_ap;
     fov_stripe_partitions(i).t_track = track_times;
 end
 save([data_path 'fov_partitions.mat'],'fov_stripe_partitions')

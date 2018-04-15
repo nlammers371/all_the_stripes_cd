@@ -7,6 +7,7 @@ min_dp = 15; % minimum # dp acceptable for an inference trace
 Tres_interp = 20;
 InterpGrid = 0:Tres_interp:60*50;
 FOV_edge_padding = 20; % pixels
+xDim = 1024;
 %------------------------Import Raw Trace Set------------------------%
 %ID's of sets to includeg
 project = 'eve7stripes_inf_2018_03_27_final';
@@ -52,6 +53,9 @@ jump_ct = 0;
 blip_ct1 = 0;
 for i = 1:length(trace_struct) 
     temp = trace_struct(i);
+    if temp.x_flip_flag        
+        temp.xPos = xDim - temp.xPos + 1;
+    end    
     trace1 = temp.fluo; %Load full trace, including intervening NaN's
     time = temp.time;      
     quality_flag = 1;
@@ -100,6 +104,7 @@ for i = 1:length(trace_struct)
         int_time = int_time(ismember(all_frames,cp_frames));
         temp.([interp_fields{j} '_interp']) = interp1(int_time,int_vec,time_interp);
     end     
+    temp.stripe_id_vec_interp = round(3*temp.stripe_id_vec_interp)/3; 
     temp.fluo_interp = trace1_interp;
     temp.time_interp = time_interp;
     temp.inference_flag = quality_flag;
@@ -139,6 +144,9 @@ rm_counts = 0;
 set_vec = unique([trace_struct_final.setID]);
 for i = 1:length(schnitz_struct)
     temp = schnitz_struct(i);
+    if temp.x_flip_flag
+        temp.xPos = xDim - temp.xPos + 1;
+    end
     setID = temp.setID;
     lt = last_times(set_index==setID);
     nc_times = temp.time;         

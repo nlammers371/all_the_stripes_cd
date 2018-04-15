@@ -7,14 +7,14 @@ close all
 %%% define ID variables
 datatype = 'weka';
 inference_type = 'set_bootstrap_results';
-project = 'eve7stripes_inf_2018_03_27'; %project identifier
+project = 'eve7stripes_inf_2018_03_27_final'; %project identifier
 FigPath = ['../../fig/experimental_system/' project '/mRNA_maps/'];
 mkdir(FigPath)
 Tres = 20; % time resolution
 %%% load data
 load(['..\..\dat\' project '\inference_traces_' project '_dT20.mat']); % load inference traces
 load(['..\..\dat\' project '\stripe_pos_' project '.mat']) % load stripe position info
-load(['..\..\dat\' project '\fov_partitions_' project '.mat']);
+load(['..\..\dat\' project '\fov_partitions.mat']);
 %%% Define Mapping Variables
 mRNA_decay_time = 7; %mRNA half life (minutes)
 xDim_image = 1024; 
@@ -64,9 +64,9 @@ for i = 1:length(trace_struct_final)
     trace_set_vec = [trace_set_vec repelem(setID, length(trace_struct_final(i).xPos))];
     trace_ap_vector = [trace_ap_vector [trace_struct_final([trace_struct_final.setID]==i).ap_vector]];
 end
-
+%%
 %%% get average stripe positions. use to assign stripe positions
-stripe_t_vec = stripe_pos_struct(1).t_vec;
+stripe_t_vec = stripe_pos_struct(1).plot_times;
 map_filter = stripe_t_vec == t_map;
 stripe_pos_mat= NaN(length(set_index),7);
 for i = 1:length(set_index)
@@ -77,9 +77,10 @@ for i = 1:length(set_index)
     set_stripes = unique(round(stripe_id_mat))';
     set_stripes = set_stripes(~isnan(set_stripes)); 
     set_stripes = set_stripes(set_stripes>0);
-    ap_mat = fov_partitions(i).pixel_ap_id_mat;
+    centroid_mat = fov_stripe_partitions(i).stripe_centroids_ap;
+    
     for s = 1:length(set_stripes)
-        stripe_pos_mat(i,set_stripes(s)) = mean(ap_mat(stripe_id_mat==set_stripes(s)));
+        stripe_pos_mat(i,set_stripes(s)) =nanmean(centroid_mat(:,set_stripes(s)));
     end
 end
 

@@ -8,7 +8,7 @@ K = 2; %states used for final inference
 Tres = 20; %Time Resolution
 alpha = 1.4; % MS2 rise time in time steps
 fluo_type = 1; % type of spot integration used
-clipped = 1; % if 0, traces are taken to be full length of nc14
+clipped_ends = 1; % if 0, traces are taken to be full length of nc14
 stop_time_inf = 60;
 no_ends_flag = 1;
 dynamic_bins = 1; % if 1, use time-resolved region classifications
@@ -26,7 +26,7 @@ plot_scatters = 0; %If 1 plot single bootstrap results
 %Generate filenames and writepath
 % truncated_inference_w7_t20_alpha14_f1_cl1_no_ends1
 id_string = [ 'truncated_inference_w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
-    '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) ...
+    '_f' num2str(fluo_type) '_cl' num2str(clipped_ends) '_no_ends' num2str(clipped_ends) ...
     '_tbins' num2str(dynamic_bins) '/states' num2str(K) '/t_window' num2str(t_window)  '/' inference_type '/']; 
 
 ReadPath = ['../../dat/' project '/' id_string];
@@ -59,6 +59,20 @@ for i = 1:length(inf_times)
         off_mat_ste(i,j) = [hmm_results(t_vec==inf_times(i)&region_vec==inf_regions(j)).R_fit_std(3)];
     end
 end
+c_vec = 2:3:22;
+%%% make data set for mike
+t_params_mat = [repelem(1:7,length(inf_times))' repmat(inf_times',7,1) reshape(r_mat_mean(:,c_vec),1,[])'...
+     reshape(r_mat_ste(:,c_vec),1,[])'...
+    ,reshape(on_mat_mean(:,c_vec),1,[])',reshape(on_mat_ste(:,c_vec),1,[])',...
+    reshape(off_mat_mean(:,c_vec),1,[])',reshape(off_mat_ste(:,c_vec),1,[])'];
+
+header = {'stripe_id', 'seconds','r_on_mean','r_on_ste','r_off_mean','r_off_ste',...
+          'k_on_mean', 'k_off_mean','k_on_ste', 'k_off_ste', 'r_off_mean',...
+          'r_off_ste', 'r_on_ste','observed_production', 'predicted_production', 'predicted_less_r',...
+          'predicted_less_k_on', 'predicted_less_k_off', 'predicted_only_k_on'};
+csvwrite_with_headers([DataPath '\mean_param_profiles.csv'], ...
+                       ss_param_mat, header,9); 
+%%
 r_mat_ste = r_mat_ste / max(r_mat_mean(:));
 r_mat_mean = r_mat_mean / max(r_mat_mean(:));
 %% Make Scatter Figs   

@@ -7,6 +7,7 @@ min_dp = 15; % minimum # dp acceptable for an inference trace
 Tres_interp = 20;
 InterpGrid = 0:Tres_interp:60*50;
 FOV_edge_padding = 20; % pixels
+
 %------------------------Import Raw Trace Set------------------------%
 %ID's of sets to includeg
 project = 'eve7stripes_inf_2018_03_27_final';
@@ -52,6 +53,8 @@ jump_ct = 0;
 blip_ct1 = 0;
 for i = 1:length(trace_struct) 
     temp = trace_struct(i);
+    if temp.flip_flag
+        error('asfa)
     trace1 = temp.fluo; %Load full trace, including intervening NaN's
     time = temp.time;      
     quality_flag = 1;
@@ -100,6 +103,7 @@ for i = 1:length(trace_struct)
         int_time = int_time(ismember(all_frames,cp_frames));
         temp.([interp_fields{j} '_interp']) = interp1(int_time,int_vec,time_interp);
     end     
+    temp.stripe_id_vec_interp = round(3*temp.stripe_id_vec_interp)/3; 
     temp.fluo_interp = trace1_interp;
     temp.time_interp = time_interp;
     temp.inference_flag = quality_flag;
@@ -218,15 +222,11 @@ if print_traces
         hold on
         plot(trace_struct_final(i).time / 60, trace_struct_final(i).fluo...
                 , '-o','Linewidth',1.5,'Color',cm(15,:)/1.5)
-            plot(trace_struct_final(i).time / 60, trace_struct_final(i).fluo3...
-                , '-o','Linewidth',1.5,'Color',cm(30,:)/1.5)
         plot(trace_struct_final(i).time_interp / 60, trace_struct_final(i).fluo_interp,...
             '-s', 'Linewidth',1.5,'Color',cm(15,:))
-%         plot(trace_struct_final(i).time_interp / 60, trace_struct_final(i).fluo_interp3,...
-%             '-s', 'Linewidth',1.5,'Color',cm(30,:))
         inf_flag = trace_struct_final(i).inference_flag;
         title(['Original vs. Final: Trace ' num2str(i) ' (inf flag=' num2str(inf_flag) ')'])
-        legend('Raw', 'Interpolated (1)');
+        legend('Raw', 'Interpolated');
         xlabel('Minutes');
         grid on        
         saveas(t_fig, [TraceSavePath, 'trace_' num2str(i) '.png'],'png');

@@ -21,7 +21,7 @@ load(fov_name); % ap and stripe info at pixel level
 load(nucleus_name);
 load(cluster_name);
 
-save_spline_figs = 1; % if 1 generates spline figs
+save_spline_figs = 0; % if 1 generates spline figs
 %% generate fluorescence maps 
 %%% Color Info
 cm = jet(128);
@@ -78,7 +78,9 @@ for i = 1:length(set_index)
     [~, ap_max] = max(ap_set_vec);
     x_min = xp_set_vec(ap_min);
     x_max = xp_set_vec(ap_max);
+    flip_flag = 0;
     if x_min > x_max                
+        flip_flag = 1;
         xp_set_vec = size(stripe_mat,2) - xp_set_vec + 1;        
     end   
     stripe_id_vec_all = unique(stripe_mat_all(:))';
@@ -155,8 +157,7 @@ for i = 1:length(set_index)
                     = nanmean(temporal_spline_mat_stable(:,ismember(stripe_id_vec_all,stripe_id_vec(k)),ismember(plot_times,min_time:min_time+4)),3);                        
             end
             spline_mat_raw(:,ismember(stripe_id_vec_all,stripe_id_vec(k))) = poly;                        
-        end
-        
+        end        
         if save_spline_figs
             poly_fig = figure;
             poly_fig.Visible = 'off';
@@ -165,6 +166,11 @@ for i = 1:length(set_index)
             imagesc(gauss_array);           
             for k = 1:length(stripe_id_vec)
                 stripe_id = stripe_id_vec(k);
+                if stripe_id == 5
+                    min_time = min_time_5;
+                else
+                    min_time = min_time_all;
+                end
                 if plot_times(j) <= min_time
                     plot(spline_mat_raw(:,ismember(stripe_id_vec_all,stripe_id_vec(k))),1:size(stripe_mat,1),'--','Color',cm(1+(stripe_id-1)*increment,:),...
                         'LineWidth',1)                
@@ -187,7 +193,7 @@ for i = 1:length(set_index)
     end        
     close all        
     %%%------------- Make time-dependent inference regions -------------%%%
-    mean_center_mat = round(nanmean(temporal_spline_mat_stable(:,:,ismember(plot_times,min_time)),3));
+    mean_center_mat = round(nanmean(temporal_spline_mat_stable(:,:,plot_times>min_time),3));
     stripe_id_mat_full = NaN(size(stripe_mat,1),size(stripe_mat,2),length(plot_times));         
     for t = 1:length(plot_times)        
         center_mat = round(temporal_spline_mat_stable(:,:,t));        
@@ -232,16 +238,17 @@ for i = 1:length(set_index)
                 end
             end
         end
-    end
-    mode_stripe_id_mat = mode(stripe_id_mat_full(:,:,plot_times>=min_time_5),3);
-    mean_stripe_id_mat = mean(stripe_id_mat_full(:,:,plot_times>=min_time_5),3);        
+    end    
+    stripe_id_mat_show = stripe_id_mat_full;
+    stripe_id_mat_show(isnan(stripe_id_mat_show)) = 0;
+    mode_stripe_id_mat = mode(stripe_id_mat_show(:,:,plot_times>=min_time_5),3);    
     stripe_pos_struct(i).stripe_id_mat = stripe_id_mat_full;     
     stripe_RGB = NaN(size(stripe_mat,1),size(stripe_mat,2),3);    
     index_vec = 1:size(stripe_mat,2);        
     % make RGB image
-    for j = 1:length(stripe_id_vec)
-        stripe_id = stripe_id_vec(j);
-        stripe_color = cm(1+(stripe_id-1)*increment,:);
+    for j = 1:length(stripe_id_vec_all)
+        stripe_id = stripe_id_vec_all(j);
+        stripe_color = stripe_colors(stripe_id,:);
         for k = 1:3
             slice = stripe_RGB(:,:,k);
             slice(mode_stripe_id_mat==stripe_id-1/3) = stripe_color(k)/2;
@@ -256,12 +263,11 @@ for i = 1:length(set_index)
     partition_fig.Visible = 'off';
     imshow(stripe_RGB)
     hold on
-    for j = 1:length(stripe_id_vec)
+    for j = 1:length(stripe_id_vec_all)
         plot(mean_center_mat(:,j),1:size(stripe_mat,1),'Color','black','LineWidth',1.5)
     end
-    title(['Set: ' num2str(i)])           
-    saveas(partition_fig,[flux_dynamics_path '/inference_partitions_set' num2str(i) '.png'],'png') 
-    
+    title(['Set: ' num2str(i)])        
+    saveas(partition_fig,[flux_dynamics_path '/inference_partitions_set' num2str(i) '.png'],'png')     
     %%% classify traces
     single_set_vec = [trace_struct.setID];
     set_indices = find(single_set_vec==i);
@@ -269,6 +275,9 @@ for i = 1:length(set_index)
     for m = 1:length(set_indices)
         ind = set_indices(m);        
         xVec = round(trace_struct(ind).xPos);
+        if flip_flag
+            xVec = xDim - xVec + 1;
+        end
         yVec = round(trace_struct(ind).yPos);
         t_trace = trace_struct(ind).time;
         f_trace = trace_struct(ind).fluo;
@@ -285,20 +294,22 @@ for i = 1:length(set_index)
             s_id = stripe_id_mat_full(yp,xp,t_filter);            
             tr_stripe_id_vec(t) = s_id;                            
         end         
-        fill_ind = find(-1==(tr_stripe_id_vec));
-        id_vec = 1:length(tr_stripe_id_vec);        
-        t_ref_vec = plot_times;
-        t_ref_vec(t_ref_vec<min_time) = Inf;
-        first_ind = find(t_ref_vec>=min_time,1);
+%         fill_ind = find(-1==(tr_stripe_id_vec));
+%         id_vec = 1:length(tr_stripe_id_vec);        
+%         t_ref_vec = plot_times;
+%         t_ref_vec(t_ref_vec<min_time) = Inf;
+%         first_ind = find(t_ref_vec>=min_time,1);
 %         if ~isempty(fill_ind) 
 %             % Assign early time points to nearest valid dynamic bin        
-%             for k = 1:length(fill_ind)
+% %             for k = 1:length(fill_ind)
 % %                 [~, nn] = min(abs(t_ref_vec - round(t_trace(fill_ind(k))/60))); % find nearest valid point
 %                 tr_stripe_id_vec(fill_ind(k)) = stripe_id_mat_full(yVec(fill_ind(k)),xVec(fill_ind(k)),first_ind:first_ind+4);
 %             end                
 %         end        
         trace_struct(ind).stripe_id_inf = mode(tr_stripe_id_vec);
         trace_struct(ind).stripe_id_vec = tr_stripe_id_vec;
+        trace_struct(ind).xPos = xVec;
+        trace_struct(ind).x_flip_flag = flip_flag;
     end    
     
     %%% classify nuclei
@@ -309,6 +320,9 @@ for i = 1:length(set_index)
         ind = set_indices(m);
         xVec = round(schnitz_struct(ind).xPos);
         yVec = round(schnitz_struct(ind).yPos);
+        if flip_flag 
+            xVec = xDim - xVec + 1;
+        end
         t_trace = schnitz_struct(ind).time;                
         nc_stripe_id_vec = zeros(1,length(t_trace))-1;
         fit_times = plot_times(plot_times>=min_time);
@@ -322,10 +336,10 @@ for i = 1:length(set_index)
             s_id = stripe_id_mat_full(yp,xp,t_filter);            
             nc_stripe_id_vec(t) = s_id;                            
         end         
-        fill_ind = find(-1==(nc_stripe_id_vec));
-        id_vec = 1:length(nc_stripe_id_vec);        
-        t_ref_vec = plot_times;
-        t_ref_vec(t_ref_vec<min_time) = Inf;
+%         fill_ind = find(-1==(nc_stripe_id_vec));
+%         id_vec = 1:length(nc_stripe_id_vec);        
+%         t_ref_vec = plot_times;
+%         t_ref_vec(t_ref_vec<min_time) = Inf;
 %         if ~isempty(fill_ind) 
 %             % Assign early time points to nearest valid dynamic bin        
 %             for k = 1:length(fill_ind)
@@ -335,6 +349,8 @@ for i = 1:length(set_index)
 %         end        
         schnitz_struct(ind).stripe_id_inf = mode(nc_stripe_id_vec);
         schnitz_struct(ind).stripe_id_vec = nc_stripe_id_vec;
+        schnitz_struct(ind).xPos = xVec;
+        schnitz_struct(ind).x_flip_flag = flip_flag;
     end            
     stripe_pos_struct(i).plot_times = plot_times;
     disp(['Completed ' num2str(i) ' of ' num2str(length(set_index))])    
