@@ -21,8 +21,9 @@ load(fov_name); % ap and stripe info at pixel level
 load(nucleus_name);
 load(cluster_name);
 
-save_spline_figs = 0; % if 1 generates spline figs
+save_spline_figs = 1; % if 1 generates spline figs
 %% generate fluorescence maps 
+%%%%%%%%%%%%%%%%%%% Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Color Info
 cm = jet(128);
 increment = floor(size(cm,1)/7);
@@ -45,6 +46,8 @@ t_window = 2; % lag/lead averaging window size in minutes
 plot_times = fov_stripe_partitions(1).plot_times; % times during which to track stripe
 min_time_all = 25; % first time to use for inference bins
 min_time_5 = 30; % exception ro 5 as it comes on later
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %%% make spatial ref matrices
 [x_ref_mat,y_ref_mat] = meshgrid(1:1024,1:256);
 %%% make indexing vectors for traces
@@ -78,8 +81,10 @@ for i = 1:length(set_index)
     [~, ap_max] = max(ap_set_vec);
     x_min = xp_set_vec(ap_min);
     x_max = xp_set_vec(ap_max);
+    flip_flag = 0;
     if x_min > x_max                
-        xp_set_vec = size(stripe_mat,2) - xp_set_vec + 1;        
+        flip_flag = 1;
+        xp_set_vec = size(stripe_mat_all,2) - xp_set_vec + 1;        
     end   
     stripe_id_vec_all = unique(stripe_mat_all(:))';
     if i == 3 % fix issue with s7 in 3
@@ -273,6 +278,9 @@ for i = 1:length(set_index)
     for m = 1:length(set_indices)
         ind = set_indices(m);        
         xVec = round(trace_struct(ind).xPos);
+        if flip_flag
+            xVec = xDim - xVec + 1;
+        end
         yVec = round(trace_struct(ind).yPos);
         t_trace = trace_struct(ind).time;
         f_trace = trace_struct(ind).fluo;
@@ -303,6 +311,8 @@ for i = 1:length(set_index)
 %         end        
         trace_struct(ind).stripe_id_inf = mode(tr_stripe_id_vec);
         trace_struct(ind).stripe_id_vec = tr_stripe_id_vec;
+%         trace_struct(ind).xPos = xVec;
+        trace_struct(ind).x_flip_flag = flip_flag;
     end    
     
     %%% classify nuclei
@@ -313,6 +323,9 @@ for i = 1:length(set_index)
         ind = set_indices(m);
         xVec = round(schnitz_struct(ind).xPos);
         yVec = round(schnitz_struct(ind).yPos);
+        if flip_flag 
+            xVec = xDim - xVec + 1;
+        end
         t_trace = schnitz_struct(ind).time;                
         nc_stripe_id_vec = zeros(1,length(t_trace))-1;
         fit_times = plot_times(plot_times>=min_time);
@@ -339,6 +352,8 @@ for i = 1:length(set_index)
 %         end        
         schnitz_struct(ind).stripe_id_inf = mode(nc_stripe_id_vec);
         schnitz_struct(ind).stripe_id_vec = nc_stripe_id_vec;
+%         schnitz_struct(ind).xPos = xVec;
+        schnitz_struct(ind).x_flip_flag = flip_flag;
     end            
     stripe_pos_struct(i).plot_times = plot_times;
     disp(['Completed ' num2str(i) ' of ' num2str(length(set_index))])    
