@@ -18,7 +18,7 @@
 %
 % Outputs
 %   None
-function csvwrite_with_headers(filename,m,headers,r,c)
+function csvwrite_with_headers(filename,m,headers,pr,r,c)
 
 %% initial checks on the inputs
 if ~ischar(filename)
@@ -27,10 +27,10 @@ end
 
 % the r and c inputs are optional and need to be filled in if they are
 % missing
-if nargin < 4
+if nargin < 5
     r = 0;
 end
-if nargin < 5
+if nargin < 6
     c = 0;
 end
 
@@ -69,4 +69,4 @@ fclose(fid);
 %
 % Call dlmwrite with a comma as the delimiter
 %
-dlmwrite(filename, m,'-append','delimiter',',','roffset', r,'coffset',c);
+dlmwrite(filename, m,'-append','delimiter',',','roffset', r,'coffset',c,'precision',pr);

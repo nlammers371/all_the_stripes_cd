@@ -1,8 +1,8 @@
 % Script to examine position-specific nucleus and activity flux trends over time 
 close all
-clear all
+clear 
 %%% set ID variables
-project = 'eve7stripes_inf_2018_02_20';
+project = 'eve7stripes_inf_2018_03_27_final';
 DataPath = ['../../dat/' project];
 FigPath = ['../../fig/experimental_system/' project '/stripe_dynamics/'];
 

@@ -19,14 +19,7 @@ else
     for i = 2:22
         bin_groups = [bin_groups{:} {round(i/3,1)}];
     end
-%     bin_groups = [];
-%     for i = 2:22
-%         bin_groups = [bin_groups round(i/3,1)];
-%     end
-%     bin_groups = {bin_groups};
 end
-warning('off','all') %Shut off Warnings
-
 %-------------------------------System Vars-------------------------------%
 w = 7; % Memory
 Tres = 20; % Time Resolution
@@ -35,8 +28,8 @@ stop_time_inf = 60; % Specify cut-off time for inference
 min_dp = 10; % min length of traces to include
 clipped = 1; % if 0 use "full" trace with leading and trailing 0's
 fluo_field = 1; % specify which fluo field to (1 or 3)
-inference_times = 35*60;%(10:5:45)*60;
-t_window = 30*60; % determines width of sliding window
+inference_times = (10:5:45)*60;
+t_window = 15*60; % determines width of sliding window
 clipped_ends = 1; % if one, remove final w time steps from traces
 dynamic_bins = 1; % if 1, use time-resolved region classifications
 %------------------Define Inference Variables------------------------------%
@@ -50,11 +43,11 @@ else
 end
 n_localEM = 25; % set num local runs
 n_steps_max = 500; % set max steps per inference
-eps = 10e-4; % set convergence criteria
+eps = 1e-4; % set convergence criteria
 
 %----------------------------Bootstrap Vars-------------------------------%
-dp_bootstrap = 1;
-set_bootstrap = 0;
+dp_bootstrap = 0;
+set_bootstrap = 1;
 if set_bootstrap
     out_string = '_set';    
 elseif dp_bootstrap
@@ -63,10 +56,10 @@ else
     error('inference type unspecified')
 end
 n_bootstrap = 10;
-sample_size = 10000;
+sample_size = 5000;
 min_dp_per_inf = 1500; % inference will be aborted if fewer present
 %----------------------------Set Write Paths------------------------------%
-project = 'eve7stripes_inf_2018_02_20';
+project = 'eve7stripes_inf_2018_03_27_final';
 datapath = ['../../dat/' project '/']; %Path to raw data
 % generate read and write names
 dataname = ['inference_traces_' project '_dT' num2str(Tres) '.mat'];
@@ -96,25 +89,13 @@ for i = 1:length(trace_struct_final)
     temp_old = trace_struct_final(i);
     temp_new = struct;
     if clipped
-        time = temp_old.time_interp;
-        if fluo_field == 1            
-            fluo = temp_old.fluo_interp;
-        elseif fluo_field == 3           
-            fluo = temp_old.fluo_interp3;
-        else
-            error('unknown fluo field')
-        end
+        time = temp_old.time_interp;        
+        fluo = temp_old.fluo_interp;        
     else
         time = temp_old.time_full;
-        if fluo_field == 1            
-            fluo = temp_old.fluo_full;
-        elseif fluo_field == 3            
-            fluo = temp_old.fluo_full3;
-        else
-            error('unknown fluo field')
-        end
+        fluo = temp_old.fluo_full;                    
     end
-    tf = time((time>=0)&(time<stop_time_inf*60));
+    tf = time((time>w*Tres)&(time<stop_time_inf*60));
     if length(tf) >= min_dp
         temp_new.fluo_inf = fluo(ismember(time,tf));
         temp_new.time_inf = tf;

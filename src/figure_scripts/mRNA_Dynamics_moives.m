@@ -5,7 +5,7 @@ close all
 clear 
 
 % set filenames
-project = 'eve7stripes_inf_2018_03_27'; %Project Identifier
+project = 'eve7stripes_inf_2018_03_27_final'; %Project Identifier
 
 fig_path = ['../../fig/experimental_system/' project '/stripe_dynamics/'];
 data_path = ['../../dat/' project '/']; % data mat directory
