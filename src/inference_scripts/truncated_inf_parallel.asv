@@ -19,7 +19,14 @@ else
     for i = 2:22
         bin_groups = [bin_groups{:} {round(i/3,1)}];
     end
+%     bin_groups = [];
+%     for i = 2:22
+%         bin_groups = [bin_groups round(i/3,1)];
+%     end
+%     bin_groups = {bin_groups};
 end
+warning('off','all') %Shut off Warnings
+
 %-------------------------------System Vars-------------------------------%
 w = 7; % Memory
 Tres = 20; % Time Resolution
@@ -43,7 +50,7 @@ else
 end
 n_localEM = 25; % set num local runs
 n_steps_max = 500; % set max steps per inference
-eps = 1e-4; % set convergence criteria
+eps = 10e-4; % set convergence criteria
 
 %----------------------------Bootstrap Vars-------------------------------%
 dp_bootstrap = 0;
@@ -59,7 +66,7 @@ n_bootstrap = 10;
 sample_size = 5000;
 min_dp_per_inf = 1500; % inference will be aborted if fewer present
 %----------------------------Set Write Paths------------------------------%
-project = 'eve7stripes_inf_2018_03_27_final';
+project = 'eve7stripes_inf_2018_02_20';
 datapath = ['../../dat/' project '/']; %Path to raw data
 % generate read and write names
 dataname = ['inference_traces_' project '_dT' num2str(Tres) '.mat'];
@@ -95,7 +102,7 @@ for i = 1:length(trace_struct_final)
         time = temp_old.time_full;
         fluo = temp_old.fluo_full;                    
     end
-    tf = time((time>w*Tres)&(time<stop_time_inf*60));
+    tf = time((time>=0)&(time<stop_time_inf*60));
     if length(tf) >= min_dp
         temp_new.fluo_inf = fluo(ismember(time,tf));
         temp_new.time_inf = tf;
