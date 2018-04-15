@@ -47,7 +47,7 @@ for d = 1 : length(dirinfo)
     ap_filenames = [ap_filenames {[thisdir '/APDetection.mat']}];    
     nc_filenames = [nc_filenames {[thisdir '/' thisdir '_lin.mat']}];           
 end
-%%
+
 trace_struct = struct; % Generate data structure to store extracted trace sets
 schnitz_struct = []; % structure to store nucleis info
 
