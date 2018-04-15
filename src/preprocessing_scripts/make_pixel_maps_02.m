@@ -17,7 +17,7 @@ fov_save_name = [data_path 'fov_partitions.mat'];
 load(trace_name); % particle info
 load(nucleus_name);
 load(cluster_name);
-
+%%
 xDim = 1024;
 yDim = 256;
 track_times = cluster_struct.track_times;
@@ -28,7 +28,8 @@ fov_stripe_partitions = struct;
 ap_to_x_factors = NaN(1,length(set_index));
 for i = 1:length(set_index)    
     set_stripe_map = NaN(yDim,xDim,length(plot_times));
-    set_centroids = NaN(length(plot_times),7);
+    set_centroids_pix = NaN(length(plot_times),7);
+    set_centroids_ap = NaN(length(plot_times),7);
     all_ap = [trace_struct([trace_struct.setID]==i).ap_vector];
     all_x = [trace_struct([trace_struct.setID]==i).xPos];
     x_min = all_x(all_ap==min(all_ap));
@@ -39,33 +40,40 @@ for i = 1:length(set_index)
     all_y = [trace_struct([trace_struct.setID]==i).yPos];
     beta = regress(all_ap',[ones(size(all_x))' all_x' all_y']);
     ap_x_factor = ((100^2*(beta(2)^2 + beta(3)^2))).^-.5;    
-    a_mat = (beta(2).^-1)*(cluster_struct.final_anterior_mat(:,:,i)-beta(1) - beta(3)*128);
-    p_mat = (beta(2).^-1)*(cluster_struct.final_posterior_mat(:,:,i)-beta(1) - beta(3)*128);
+    a_mat_pix = (beta(2).^-1)*(cluster_struct.final_anterior_mat(:,:,i)-beta(1) - beta(3)*128);
+    p_mat_pix = (beta(2).^-1)*(cluster_struct.final_posterior_mat(:,:,i)-beta(1) - beta(3)*128);    
     %%% in a few cases it appears that assuming y midpoint implies
     %%% impossible x values
-    a_mat(a_mat<1) = 1;
-    p_mat(p_mat>xDim) = xDim;
+    a_mat_pix(a_mat_pix<1) = 1;
+    p_mat_pix(p_mat_pix>xDim) = xDim;
     c_mat = (beta(2).^-1)*(cluster_struct.final_centroid_mat(:,:,i)-beta(1) - beta(3)*128);
+    c_mat_ap = cluster_struct.final_centroid_mat(:,:,i);
     
-    a_mat_interp = NaN(length(plot_times),7);
-    p_mat_interp = NaN(length(plot_times),7);
-    c_mat_interp = NaN(length(plot_times),7);
+    a_mat_pix_interp = NaN(length(plot_times),7);
+    p_mat_pix_interp = NaN(length(plot_times),7);
+    c_mat_pix_interp = NaN(length(plot_times),7);
+        
+    c_mat_ap_interp = NaN(length(plot_times),7);
     
     % interpolate
     for k = 1:7
-        a_mat_interp(:,k) = round(interp1(track_times,a_mat(:,k)',plot_times));
-        p_mat_interp(:,k) = round(interp1(track_times,p_mat(:,k),plot_times));
-        c_mat_interp(:,k) = round(interp1(track_times,c_mat(:,k),plot_times));
+        a_mat_pix_interp(:,k) = round(interp1(track_times,a_mat_pix(:,k)',plot_times));
+        p_mat_pix_interp(:,k) = round(interp1(track_times,p_mat_pix(:,k),plot_times));
+        c_mat_pix_interp(:,k) = round(interp1(track_times,c_mat(:,k),plot_times));
+        c_mat_ap_interp(:,k) = interp1(track_times,c_mat_ap(:,k),plot_times);
     end    
-    for t = 1:size(a_mat_interp,1) % iterate through times
-        a_vec = a_mat_interp(t,:);
-        p_vec = p_mat_interp(t,:);
-        c_vec = c_mat_interp(t,:);
+    for t = 1:size(a_mat_pix_interp,1) % iterate through times
+        a_vec = a_mat_pix_interp(t,:);
+        p_vec = p_mat_pix_interp(t,:);
+        c_vec_pix = c_mat_pix_interp(t,:);
+        c_vec_ap = c_mat_ap_interp(t,:);
         stripe_id_vec = find(~isnan(p_vec));
         a_vec = a_vec(~isnan(p_vec));        
         p_vec = p_vec(~isnan(p_vec));        
-        c_vec = c_vec(~isnan(c_vec));        
-        set_centroids(t,stripe_id_vec) = c_vec;
+        c_vec_pix = c_vec_pix(~isnan(c_vec_pix));        
+        
+        set_centroids_pix(t,stripe_id_vec) = c_vec_pix;
+        set_centroids_ap(t,:) = c_vec_ap;
         for j = 1:length(p_vec)            
             set_stripe_map(:,a_vec(j):p_vec(j),t) = stripe_id_vec(j);
         end           
@@ -73,7 +81,8 @@ for i = 1:length(set_index)
     fov_stripe_partitions(i).ap_x_factor = ap_x_factor;
     fov_stripe_partitions(i).plot_times = plot_times;    
     fov_stripe_partitions(i).stripe_id_mat = set_stripe_map;
-    fov_stripe_partitions(i).stripe_centroids = set_centroids;
+    fov_stripe_partitions(i).stripe_centroids = set_centroids_pix;
+    fov_stripe_partitions(i).stripe_centroids_ap = set_centroids_ap;
     fov_stripe_partitions(i).t_track = track_times;
 end
 save([data_path 'fov_partitions.mat'],'fov_stripe_partitions')
