@@ -3,7 +3,7 @@
 clear 
 close all
 %%%Set Cleaning and Summary Parameters
-min_dp = 15; % minimum # dp acceptable for an inference trace
+min_dp = 15; % minimum # dp acceptable for an inferyPOsence trace
 Tres_interp = 20;
 InterpGrid = 0:Tres_interp:60*50;
 FOV_edge_padding = 20; % pixels
@@ -14,8 +14,8 @@ project = 'eve7stripes_inf_2018_03_27_final';
 print_traces = 0; %Output PNG files for traces?
 
 %---------------------------Set Paths-------------------------------------%
-TracePath = ['../../dat/' project '/' 'raw_traces_' project '.mat'];
-NucleusPath = ['../../dat/' project '/' 'ellipse_info_' project '.mat'];
+TracePath = ['../../dat/' project '/' 'raw_traces_02_' project '.mat'];
+NucleusPath = ['../../dat/' project '/' 'ellipse_info_02_' project '.mat'];
 OutPath = ['../../dat/' project '/'];
 FigPath = ['../../fig/experimental_system/' project '/preprocessing'];
 TraceSavePath = [FigPath '/traces/'];

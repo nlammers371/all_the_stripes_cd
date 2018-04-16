@@ -10,20 +10,20 @@ data_path = ['../../dat/' project '/']; % data mat directory
 
 flux_dynamics_path = [fig_path 'ap_positioning/stripe_dynamics/'];
 mkdir(flux_dynamics_path);
-trace_name = [data_path 'raw_traces_' project]; % names for compiled trace struct
+trace_read_name = [data_path 'raw_traces_01_' project]; % names for compiled trace struct
 trace_save_name = [data_path 'raw_traces_02_' project ]; % names for compiled trace struct
-nucleus_name = [data_path 'ellipse_info_' project]; % names for compiled elipse struct
-nucleus_save_name = [data_path 'ellipse_info_02' project]; % names for compiled elipse struct
+nucleus_read_name = [data_path 'ellipse_info_01_' project]; % names for compiled elipse struct
+nucleus_save_name = [data_path 'ellipse_info_02_' project]; % names for compiled elipse struct
 fov_name = [data_path 'fov_partitions.mat'];
 cluster_name = [data_path 'stripe_clustering_results.mat'];
 stripe_save_name = [data_path 'stripe_pos_' project '.mat'];
 % load datasets
-load(trace_name); % particle info
+load(trace_read_name); % particle info
 load(fov_name); % ap and stripe info at pixel level
-load(nucleus_name);
+load(nucleus_read_name);
 load(cluster_name);
 
-save_spline_figs = 1; % if 1 generates spline figs
+save_spline_figs = 0; % if 1 generates spline figs
 %% generate fluorescence maps 
 %%%%%%%%%%%%%%%%%%% Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Color Info

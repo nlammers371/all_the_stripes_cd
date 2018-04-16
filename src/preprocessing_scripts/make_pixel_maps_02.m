@@ -8,8 +8,8 @@ project = 'eve7stripes_inf_2018_03_27_final'; %Project Identifier
 fig_path = ['../../fig/experimental_system/' project '/preprocessing/'];
 data_path = ['../../dat/' project '/']; % data mat directory
 
-trace_name = [data_path 'raw_traces_' project]; % names for compiled trace struct
-nucleus_name = [data_path 'ellipse_info_' project]; % names for compiled elipse struct
+trace_name = [data_path 'raw_traces_01_' project]; % names for compiled trace struct
+nucleus_name = [data_path 'ellipse_info_01_' project]; % names for compiled elipse struct
 cluster_name = [data_path 'stripe_clustering_results.mat'];
 
 fov_save_name = [data_path 'fov_partitions.mat'];

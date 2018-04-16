@@ -10,8 +10,8 @@ data_path = ['../../dat/' project '/']; % data mat directory
 % fig subfolders
 ap_pos_path = [fig_path 'ap_positioning/'];
 fluo_path = [fig_path 'fluo_stats/'];
-trace_name = [data_path 'raw_traces_' project]; % names for compiled trace struct
-nucleus_name = [data_path 'ellipse_info_' project]; % names for compiled elipse struct
+trace_name = [data_path 'raw_traces_01_' project]; % names for compiled trace struct
+nucleus_name = [data_path 'ellipse_info_01_' project]; % names for compiled elipse struct
 
 % make filepaths
 mkdir(data_path);
@@ -298,8 +298,8 @@ for i = 1:length(rm_particles)
     schnitz_struct(nc_particles==rm_particles(i)).ParticleID = NaN;
     schnitz_struct(i).xMean = mean(schnitz_struct(i).xPos);
     schnitz_struct(i).yMean = mean(schnitz_struct(i).yPos);
-    schnitz_struct(i).xPosParticle = [];
-    schnitz_struct(i).yPosParticle = [];
+    schnitz_struct(i).xPosParticle = NaN;
+    schnitz_struct(i).yPosParticle = NaN;
 end
 
 save([trace_name '.mat'],'trace_struct') 
@@ -541,7 +541,7 @@ else
     cluster_struct.anterior_1D_rough = anterior_1D_mat;
     cluster_struct.posterior_1D_rough = posterior_1D_mat;
     cluster_struct.centroid_1D_rough = centroid_1D_mat;
-%%
+
     %%% Review Stripe Classifications Manually
     final_anterior_mat = anterior_1D_mat;
     final_posterior_mat = posterior_1D_mat;

@@ -1,7 +1,7 @@
 % Script to generate combined data set containing inference traces alongside
 % inference results
 addpath('../utilities/');
-clear all
+clear 
 close all
 %%%%%%-----Set System Params
 w = 7; %memory assumed for inference
@@ -83,7 +83,7 @@ for f = 1:length(file_things)
     f_skip = f - f_pass
     f_pass = f_pass + 1    
 end
-%%
+
 % define indexing vectors
 inf_id_vec = [];
 sub_inf_id_vec = [];

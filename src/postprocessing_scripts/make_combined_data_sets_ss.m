@@ -128,6 +128,7 @@ for a = 1:length(nc_ncID_vec)  % use nuclei as basis for iteration
    end
    entry_index = ind_vec(end);
 end
+%%
 % remove NaN rows
 % trace_mat_long = trace_mat_long(nan_index,:);
 csvwrite_with_headers([DataPath '\eve_data_longform_w_nuclei.csv'], ...
