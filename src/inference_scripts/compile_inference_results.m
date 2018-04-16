@@ -22,7 +22,8 @@ end
 %Generate filenames and writepath
 id_var = [ '/w' num2str(w) '_t' num2str(Tres) '_alpha' num2str(round(alpha*10)) ...
     '_f' num2str(fluo_type) '_cl' num2str(clipped) '_no_ends' num2str(clipped_ends) ...
-    '_tbins' num2str(dynamic_bins) '/K' num2str(K) '_t_window' num2str(t_window) '_' inference_type '/']; 
+    '_tbins' num2str(dynamic_bins) '/K' num2str(K) '_t_window' num2str(t_window) ...
+     '_t_inf' num2str(t_inf) '_' inference_type '/']; 
 
 f_path =  [DPFolder  project  id_var ];
 OutPath = ['../../dat/' project  id_var];

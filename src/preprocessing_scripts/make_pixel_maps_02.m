@@ -17,11 +17,12 @@ fov_save_name = [data_path 'fov_partitions.mat'];
 load(trace_name); % particle info
 load(nucleus_name);
 load(cluster_name);
-%%
+
 xDim = 1024;
 yDim = 256;
 track_times = cluster_struct.track_times;
 set_index = cluster_struct.set_index;
+nc_set_vec = [schnitz_struct.setID];
 % generate pixel-stripe maps
 plot_times = min(track_times):max(track_times);
 fov_stripe_partitions = struct;
@@ -34,11 +35,25 @@ for i = 1:length(set_index)
     all_x = [trace_struct([trace_struct.setID]==i).xPos];
     x_min = all_x(all_ap==min(all_ap));
     x_max = all_x(all_ap==max(all_ap));
+    flip_flag = 0;
     if x_min>x_max % deal with inversions
+        flip_flag = 1;
         all_x = xDim - all_x + 1;
     end
     all_y = [trace_struct([trace_struct.setID]==i).yPos];
     beta = regress(all_ap',[ones(size(all_x))' all_x' all_y']);
+    
+    %%% assign ap vectors to nuclei
+    nc_set_ind = find(nc_set_vec==set_index(i));
+    for j = nc_set_ind
+        if flip_flag
+            nc_x = xDim - schnitz_struct(j).xPos  + 1;
+        else
+            nc_x = schnitz_struct(j).xPos;
+        end
+        nc_ap_vec = beta(1) + beta(2)*nc_x+ beta(3)*schnitz_struct(j).yPos;
+        schnitz_struct(j).ap_vector = nc_ap_vec;
+    end
     ap_x_factor = ((100^2*(beta(2)^2 + beta(3)^2))).^-.5;    
     a_mat_pix = (beta(2).^-1)*(cluster_struct.final_anterior_mat(:,:,i)-beta(1) - beta(3)*128);
     p_mat_pix = (beta(2).^-1)*(cluster_struct.final_posterior_mat(:,:,i)-beta(1) - beta(3)*128);    
@@ -86,6 +101,7 @@ for i = 1:length(set_index)
     fov_stripe_partitions(i).t_track = track_times;
 end
 save([data_path 'fov_partitions.mat'],'fov_stripe_partitions')
+save(nucleus_name, 'schnitz_struct');
 %%
 %%%-------------------------QC Plots------------------------------------%%%
 set_titles = {};

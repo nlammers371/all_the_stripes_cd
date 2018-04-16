@@ -11,6 +11,7 @@ data_path = ['../../dat/' project '/']; % data mat directory
 flux_dynamics_path = [fig_path 'ap_positioning/stripe_dynamics/'];
 mkdir(flux_dynamics_path);
 trace_name = [data_path 'raw_traces_' project]; % names for compiled trace struct
+trace_save_name = [data_path 'raw_traces_02_' project ]; % names for compiled trace struct
 nucleus_name = [data_path 'ellipse_info_' project]; % names for compiled elipse struct
 fov_name = [data_path 'fov_partitions.mat'];
 cluster_name = [data_path 'stripe_clustering_results.mat'];
@@ -23,6 +24,7 @@ load(cluster_name);
 
 save_spline_figs = 0; % if 1 generates spline figs
 %% generate fluorescence maps 
+%%%%%%%%%%%%%%%%%%% Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Color Info
 cm = jet(128);
 increment = floor(size(cm,1)/7);
@@ -45,6 +47,8 @@ t_window = 2; % lag/lead averaging window size in minutes
 plot_times = fov_stripe_partitions(1).plot_times; % times during which to track stripe
 min_time_all = 25; % first time to use for inference bins
 min_time_5 = 30; % exception ro 5 as it comes on later
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %%% make spatial ref matrices
 [x_ref_mat,y_ref_mat] = meshgrid(1:1024,1:256);
 %%% make indexing vectors for traces
@@ -81,7 +85,7 @@ for i = 1:length(set_index)
     flip_flag = 0;
     if x_min > x_max                
         flip_flag = 1;
-        xp_set_vec = size(stripe_mat,2) - xp_set_vec + 1;        
+        xp_set_vec = size(stripe_mat_all,2) - xp_set_vec + 1;        
     end   
     stripe_id_vec_all = unique(stripe_mat_all(:))';
     if i == 3 % fix issue with s7 in 3
@@ -91,11 +95,12 @@ for i = 1:length(set_index)
     temporal_fluo_array = NaN(size(stripe_mat_all));
     temporal_spline_mat_stable = NaN(size(stripe_mat_all,1),length(stripe_id_vec_all),length(plot_times));   
     temporal_spline_mat_raw = NaN(size(stripe_mat_all,1),length(stripe_id_vec_all),length(plot_times));   
+    
     for m = 1:length(plot_times)
         j = length(plot_times) - m + 1;
         stripe_mat = stripe_mat_all(:,:,j);
         stripe_id_vec = unique(stripe_mat(:))';
-        if i == 3
+        if i == 3 % don't fit stripe 7 in set 3
             stripe_id_vec(stripe_id_vec==7) = NaN;
         end
         stripe_id_vec = stripe_id_vec(~isnan(stripe_id_vec));
@@ -117,7 +122,7 @@ for i = 1:length(set_index)
         spline_mat_raw = NaN(size(stripe_mat,1),length(stripe_id_vec_all)); % spline fits
         spline_mat_stable = NaN(size(stripe_mat,1),length(stripe_id_vec_all)); % spline fits w/ back-fill
         for k = 1:length(stripe_id_vec)
-            if stripe_id_vec(k) == 5
+            if stripe_id_vec(k) == 5 % account for fact that stripe 5 rises late
                 min_time = min_time_5;
             else
                 min_time = min_time_all;
@@ -126,7 +131,7 @@ for i = 1:length(set_index)
             wt_vec_raw = gauss_array(stripe_mat==stripe_id)';
             y_vec = y_ref_mat(stripe_mat==stripe_id)';
             indices = x_ref_mat(stripe_mat==stripe_id)';
-            wt_vec = floor(wt_vec_raw/100);
+            wt_vec = floor(wt_vec_raw/100);            
             if sum(wt_vec)==0
                 continue
             end
@@ -143,7 +148,7 @@ for i = 1:length(set_index)
             poly = polyval(pp,y_vec_sp);             
             if sum(abs(diff(poly))) > yDim || min(poly) <= stripe_radius ...
                     ||max(poly) >= xDim - stripe_radius ||...
-                    (i == 2 && plot_times(j)<35 && stripe_id_vec(k)==7)
+                    (i == 2 && plot_times(j)<35 && stripe_id_vec(k)==7) % special case for stripe 7 in set 2
                 if plot_times(j) < min_time 
                        spline_mat_stable(:,ismember(stripe_id_vec_all,stripe_id_vec(k)))...
                             = nanmean(temporal_spline_mat_stable(:,ismember(stripe_id_vec_all,stripe_id_vec(k)),ismember(plot_times,min_time:min_time+4)),3);                        
@@ -156,8 +161,8 @@ for i = 1:length(set_index)
                 spline_mat_stable(:,ismember(stripe_id_vec_all,stripe_id_vec(k)))...
                     = nanmean(temporal_spline_mat_stable(:,ismember(stripe_id_vec_all,stripe_id_vec(k)),ismember(plot_times,min_time:min_time+4)),3);                        
             end
-            spline_mat_raw(:,ismember(stripe_id_vec_all,stripe_id_vec(k))) = poly;                        
-        end        
+            spline_mat_raw(:,ismember(stripe_id_vec_all,stripe_id_vec(k))) = poly;               
+        end                    
         if save_spline_figs
             poly_fig = figure;
             poly_fig.Visible = 'off';
@@ -239,6 +244,9 @@ for i = 1:length(set_index)
             end
         end
     end    
+    if plot_times(j) == 27
+            error('asfas')
+    end
     stripe_id_mat_show = stripe_id_mat_full;
     stripe_id_mat_show(isnan(stripe_id_mat_show)) = 0;
     mode_stripe_id_mat = mode(stripe_id_mat_show(:,:,plot_times>=min_time_5),3);    
@@ -308,14 +316,13 @@ for i = 1:length(set_index)
 %         end        
         trace_struct(ind).stripe_id_inf = mode(tr_stripe_id_vec);
         trace_struct(ind).stripe_id_vec = tr_stripe_id_vec;
-        trace_struct(ind).xPos = xVec;
+%         trace_struct(ind).xPos = xVec;
         trace_struct(ind).x_flip_flag = flip_flag;
     end    
     
     %%% classify nuclei
     single_set_vec = [schnitz_struct.setID];
-    set_indices = find(single_set_vec==i);
-    
+    set_indices = find(single_set_vec==i);    
     for m = 1:length(set_indices)
         ind = set_indices(m);
         xVec = round(schnitz_struct(ind).xPos);
@@ -324,13 +331,13 @@ for i = 1:length(set_index)
             xVec = xDim - xVec + 1;
         end
         t_trace = schnitz_struct(ind).time;                
-        nc_stripe_id_vec = zeros(1,length(t_trace))-1;
-        fit_times = plot_times(plot_times>=min_time);
+        nc_stripe_id_vec = NaN(1,length(t_trace));
+%         fit_times = plot_times(plot_times>=min_time);
         for t = 1:length(t_trace)
             xp = xVec(t);
             yp = yVec(t);
-            t_filter = round(t_trace(t)/60)==fit_times;
-            if sum(t_filter) == 0 % skip early tp (will be back-filled)
+            t_filter = round(t_trace(t)/60)==plot_times;
+            if sum(t_filter) == 0 %back-fill early tp
                 t_filter = 1;
             end
             s_id = stripe_id_mat_full(yp,xp,t_filter);            
@@ -349,7 +356,7 @@ for i = 1:length(set_index)
 %         end        
         schnitz_struct(ind).stripe_id_inf = mode(nc_stripe_id_vec);
         schnitz_struct(ind).stripe_id_vec = nc_stripe_id_vec;
-        schnitz_struct(ind).xPos = xVec;
+%         schnitz_struct(ind).xPos = xVec;
         schnitz_struct(ind).x_flip_flag = flip_flag;
     end            
     stripe_pos_struct(i).plot_times = plot_times;

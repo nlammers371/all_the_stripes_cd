@@ -14,13 +14,13 @@ fluo_field = 1;
 clipped_ends = 1;
 dynamic_bins = 1; % if 1, use time-resolved region classifications
 t_window = 30;
-t_inf = 35;
+t_inf = 40;
 t_start_stripe = 10; 
 %-----------------------------ID Variables--------------------------------%
 % id variables
 datatype = 'weka';
 inference_type = 'set';
-project = 'eve7stripes_inf_2018_02_20'; %project identifier
+project = 'eve7stripes_inf_2018_03_27'; %project identifier
 FigPath = ['../../fig/experimental_system/' project '/ss_hmm_parameters/'];
 mkdir(FigPath)
 %Generate filenames and writepath
@@ -33,9 +33,9 @@ mkdir(DataPath)
 % load inference summary 
 load([DataPath 'hmm_results_mem' num2str(w) '_states' num2str(K) '_ti' num2str(t_inf)...
     '_tw' num2str(t_window) '.mat'])
-% load traces
-load(['..\..\dat\' project '\inference_traces_' project '_dT' num2str(Tres) '.mat']);
 
+load(['..\..\dat\' project '\inference_traces_' project '_dT' num2str(Tres) '.mat']); % load traces
+% load(['..\..\dat\' project '\inference_nuclei_' project '_dT' num2str(Tres) '.mat']); % load nuclei
 %%% generate reference vectors 
 alpha_factor = w-alpha*.5; % account for MS2 rise time
 trace_stripe_vec = round(3*[trace_struct_final.stripe_id_vec_interp])/3;

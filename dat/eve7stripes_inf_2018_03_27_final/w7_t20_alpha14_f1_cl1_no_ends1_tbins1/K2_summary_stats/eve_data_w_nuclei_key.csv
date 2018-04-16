@@ -1,0 +1,19 @@
+nucleus_id,unique nulclues identifier
+particle_id,unique particle identifier--only populated when particle is active
+set_id,set num
+ap,nucleus ap position (fraction x/L)
+xPos,nucleus x position in FOV
+yPos,nucleus y position in FOV
+stripe_id,nucleus stripe id -- may vary over time
+inf_flag,indicates rows that were used for inference
+time,seconds intp nc14
+fluo,fluorescence
+tr_stripe_id,average trace stripe--region used for inference
+v_state_sp,Viterbi-decoded promoter state using stripe-specific params (1=off 2=on)
+v_fluo_sp,Implied Viterbi Fluorescence (stripe specific)
+v_state_agg,Viterbi-decoded promoter state using stripe-specific params (1=off 2=on)
+v_fluo_agg,Implied Viterbi Fluorescence (stripe specific)
+k_on,On rate. Value for each row reflects average taken across all bootstrap inference results for the relevant region in time and space
+k_off,Off rate. Value for each row reflects average taken across all bootstrap inference results for the relevant region in time and space
+initiation_rate_off,Basal initiation rate. Value for each row reflects average taken across all bootstrap inference results for the relevant region in time and space
+initiation_rate_on,Active initiation rate. Value for each row reflects average taken across all bootstrap inference results for the relevant region in time and space

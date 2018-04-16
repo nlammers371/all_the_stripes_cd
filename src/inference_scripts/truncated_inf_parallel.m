@@ -15,10 +15,10 @@ if savio
         bin_groups{i} = ap_ref_index(savio_groups{i});
     end
 else
-    bin_groups = {};
-    for i = 2:22
-        bin_groups = [bin_groups{:} {round(i/3,1)}];
-    end
+    bin_groups = {3.3};
+%     for i = 2:22
+%         bin_groups = [bin_groups{:} {round(i/3,1)}];
+%     end
 end
 %-------------------------------System Vars-------------------------------%
 w = 7; % Memory
@@ -41,7 +41,11 @@ t_window = 30*60; % determines width of sliding window
 K = 2; % State(s) to use for inference
 %------------------Define Inference Variables------------------------------%
 %if 1, prints each local em result to file (fail-safe in event that
-
+if length(inference_times) == 1
+    t_inf_str = num2str(round(inference_times/60));
+else
+    t_inf_str = [num2str(round(min(inference_times/60))) '_' num2str(round(max(inference_times/60)))];
+end
 % max num workers
 if savio
     MaxWorkers = 24;
@@ -51,7 +55,7 @@ end
 
 %----------------------------Bootstrap Vars-------------------------------%
 dp_bootstrap = 1;
-set_bootstrap = 1;
+set_bootstrap = 0;
 if set_bootstrap
     out_string = '_set';    
 elseif dp_bootstrap
@@ -61,7 +65,7 @@ else
 end
 n_bootstrap = 10;
 sample_size = 5000;
-min_dp_per_inf = 1000; % inference will be aborted if fewer present
+min_dp_per_inf = 750; % inference will be aborted if fewer present
 
 %----------------------------Set Write Paths------------------------------%
 project = 'eve7stripes_inf_2018_03_27_final';
@@ -77,7 +81,7 @@ alpha = trace_struct_final(1).alpha_frac*w; % Rise Time for MS2 Loops
 out_suffix =  ['/' project '/w' num2str(w) '_t' num2str(Tres)...
     '_alpha' num2str(round(alpha*10)) '_f' num2str(fluo_field) '_cl' num2str(clipped) ...
     '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) ...
-    '/K' num2str(K(1)) '_t_window' num2str(round(t_window/60)) out_string '/']; 
+    '/K' num2str(K(1)) '_t_window' num2str(round(t_window/60)) '_t_inf' t_inf_str out_string '/']; 
 if savio
     out_prefix = '/global/scratch/nlammers/eve7stripes_data/inference_out/';
 else    
@@ -184,7 +188,13 @@ for g = 1:length(bin_groups) % loop through different AP groups
                     ft = trace_struct_filtered(m).fluo_orig;
                     tt = tt(~isnan(ft));
                     time_filter = tt>=t_start & tt < t_stop;
-                    stripe_id_vec(m) = round(mode(trace_struct_filtered(m).stripe_id_vec(time_filter)),1);
+                    stripe_id_trace = trace_struct_filtered(m).stripe_id_vec(time_filter);
+                    stripe_id_trace(isnan(stripe_id_trace)) = Inf;
+%                     if sum(isnan(stripe_id_trace)) > .5* length(stripe_id_trace)
+%                         stripe_id_vec(m) = NaN;
+%                     else
+                   stripe_id_vec(m) = round(mode(trace_struct_filtered(m).stripe_id_vec(time_filter)),1);
+%                     end
                 end
             end                
             trace_filter = ismember(stripe_id_vec,bin_list);
@@ -207,7 +217,7 @@ for g = 1:length(bin_groups) % loop through different AP groups
                 if sum(temp.fluo_inf>0) > 1 % remove pure zero stretches
                     inference_set = [inference_set temp];
                 end                
-            end
+            end            
             if isempty(inference_set)
                 skip_flag = 1;
             else

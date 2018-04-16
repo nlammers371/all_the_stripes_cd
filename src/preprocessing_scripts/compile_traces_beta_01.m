@@ -1,9 +1,9 @@
 % Script to Compile Data Sets and Find Stripe Centers
-% close all
-% clear 
+close all
+clear 
 %------------------------Set Path Specs, ID Vars------------------------%
 FolderPath = 'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\';
-project = 'eve7stripes_inf_2018_03_27_beta'; %Project Identifier
+project = 'eve7stripes_inf_2018_03_27_final'; %Project Identifier
 % folders
 fig_path = ['../../fig/experimental_system/' project '/preprocessing/'];
 data_path = ['../../dat/' project '/']; % data mat directory
@@ -57,7 +57,7 @@ total_matched = 0;
 for i = 1:length(cp_filenames) % Loop through filenames    
     % read in raw files
     load([FolderPath ap_filenames{i}]) % AP Info   
-    load([FolderPath nc_filenames{i}]) % Ellipse Info
+    load([FolderPath nc_filenames{i}]) % Ellipse Info    
     raw_data = load([FolderPath cp_filenames{i}]); % Particles    
     SetID = i;    
     % get angle between the x-axis and the AP-axis 
@@ -301,6 +301,7 @@ for i = 1:length(rm_particles)
     schnitz_struct(i).xPosParticle = [];
     schnitz_struct(i).yPosParticle = [];
 end
+
 save([trace_name '.mat'],'trace_struct') 
 save([nucleus_name '.mat'],'schnitz_struct') 
 %%

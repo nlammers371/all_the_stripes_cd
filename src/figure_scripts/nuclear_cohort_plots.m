@@ -92,9 +92,9 @@ for s = 1:7
     nc_stripe_struct(s).nc_id_vec = ncID_vec_all(ncID_filter);
 end
 %% Make figures...
-stripe_id = 7;
+stripe_id = 1;
 nc_t_vec = nc_stripe_struct(stripe_id).nc_time_vec/60;
 nc_xp_vec = nc_stripe_struct(stripe_id).nc_xp_vec;
 nc_setID_vec = nc_stripe_struct(stripe_id).nc_set_vec;
-nc_setID_vec(nc_setID_vec~=4) = 1;
+nc_setID_vec(nc_setID_vec~=8) = 1;
 scatter(nc_xp_vec,nc_t_vec,45,nc_setID_vec)
