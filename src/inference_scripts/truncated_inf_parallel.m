@@ -1,8 +1,8 @@
 % Script to Conduct HMM Inference on Experimental Data
 close all
 clear 
-addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
-% addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
+% addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
+addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 savio = 0; % Specify whether inference is being conducted on Savio Cluster
 ap_ref_index = 1:7;
 ap_ref_index = reshape([ap_ref_index-1/3 ;ap_ref_index; ap_ref_index + 1/3],1,[]);
@@ -15,7 +15,7 @@ if savio
         bin_groups{i} = ap_ref_index(savio_groups{i});
     end
 else
-    bin_groups = {3.3};
+    bin_groups = {round((2:22)/3,1)};
 %     for i = 2:22
 %         bin_groups = [bin_groups{:} {round(i/3,1)}];
 %     end
@@ -36,8 +36,8 @@ n_steps_max = 500; % set max steps per inference
 eps = 1e-4; % set convergence criteria
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Thes may chaange
-inference_times = 40*60;%(10:5:45)*60;
-t_window = 30*60; % determines width of sliding window
+inference_times = 25*60;%(10:5:45)*60;
+t_window = 50*60; % determines width of sliding window
 K = 2; % State(s) to use for inference
 %------------------Define Inference Variables------------------------------%
 %if 1, prints each local em result to file (fail-safe in event that
@@ -64,11 +64,11 @@ else
     error('inference type unspecified')
 end
 n_bootstrap = 10;
-sample_size = 5000;
+sample_size = 10000;
 min_dp_per_inf = 750; % inference will be aborted if fewer present
 
 %----------------------------Set Write Paths------------------------------%
-project = 'eve7stripes_inf_2018_03_27_final';
+project = 'eve7stripes_inf_2018_04_20';
 datapath = ['../../dat/' project '/']; %Path to raw data
 % generate read and write names
 dataname = ['inference_traces_' project '_dT' num2str(Tres) '.mat'];
@@ -85,8 +85,8 @@ out_suffix =  ['/' project '/w' num2str(w) '_t' num2str(Tres)...
 if savio
     out_prefix = '/global/scratch/nlammers/eve7stripes_data/inference_out/';
 else    
-    out_prefix = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
-%     out_prefix = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+%     out_prefix = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+    out_prefix = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
 end
 out_dir = [out_prefix out_suffix];
 mkdir(out_dir);

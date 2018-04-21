@@ -3,7 +3,7 @@ close all
 clear 
 %------------------------Set Path Specs, ID Vars------------------------%
 FolderPath = 'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\';
-project = 'eve7stripes_inf_2018_03_27_final'; %Project Identifier
+project = 'eve7stripes_inf_2018_04_20'; %Project Identifier
 % folders
 fig_path = ['../../fig/experimental_system/' project '/preprocessing/'];
 data_path = ['../../dat/' project '/']; % data mat directory
@@ -385,10 +385,7 @@ else
         grid on
         title(['Aggregated Fluorescence by AP (' num2str(track_times(t)) ')'])
         [s_ids, ~] = ginput;
-
-        if track_times(t) < 20 % skip 5 for early periods
-            s_ids = [s_ids(1:4); NaN ;s_ids(5:6)];
-        end    
+   
         for j = 1:length(s_ids)        
             plot([s_ids(j) s_ids(j)],[0 y_lim],'Color',stripe_colors(j,:),'LineWidth',1.5)
         end
@@ -541,7 +538,7 @@ else
     cluster_struct.anterior_1D_rough = anterior_1D_mat;
     cluster_struct.posterior_1D_rough = posterior_1D_mat;
     cluster_struct.centroid_1D_rough = centroid_1D_mat;
-
+    %%
     %%% Review Stripe Classifications Manually
     final_anterior_mat = anterior_1D_mat;
     final_posterior_mat = posterior_1D_mat;

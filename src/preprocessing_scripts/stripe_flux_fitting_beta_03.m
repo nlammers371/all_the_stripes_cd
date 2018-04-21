@@ -4,7 +4,7 @@ close all
 clear 
 
 % set filenames
-project = 'eve7stripes_inf_2018_03_27_final'; %Project Identifier
+project = 'eve7stripes_inf_2018_04_20'; %Project Identifier
 fig_path = ['../../fig/experimental_system/' project '/preprocessing/'];
 data_path = ['../../dat/' project '/']; % data mat directory
 
@@ -23,7 +23,7 @@ load(fov_name); % ap and stripe info at pixel level
 load(nucleus_read_name);
 load(cluster_name);
 
-save_spline_figs = 0; % if 1 generates spline figs
+save_spline_figs = 1; % if 1 generates spline figs
 %% generate fluorescence maps 
 %%%%%%%%%%%%%%%%%%% Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Color Info
@@ -147,8 +147,8 @@ for i = 1:length(set_index)
             y_vec_sp = (1:size(stripe_mat,1))';
             pp = polyfit(y_vec,x_vec,3); % fit 4th degree polynomial to data
             poly = polyval(pp,y_vec_sp);             
-            if sum(abs(diff(poly))) > yDim || min(poly) <= stripe_radius ...
-                    ||max(poly) >= xDim - stripe_radius ||...
+            if  mean(poly) <= stripe_radius ... %sum(abs(diff(poly))) > yDim ||
+                    ||mean(poly) >= xDim - stripe_radius ||...
                     (i == 2 && plot_times(j)<35 && stripe_id_vec(k)==7) % special case for stripe 7 in set 2
                 if plot_times(j) < min_time 
                        spline_mat_stable(:,ismember(stripe_id_vec_all,stripe_id_vec(k)))...
@@ -207,14 +207,14 @@ for i = 1:length(set_index)
         active_indices = find(~isnan(nanmax(center_mat)));        
         for j = active_indices            
             for k = 1:size(stripe_mat,1)
-                stripe_id_mat_full(k,center_mat(k,j)-stripe_radius+1:...
-                                center_mat(k,j)+stripe_radius,t) = stripe_id_vec_all(j);
+                stripe_id_mat_full(k,max(1,center_mat(k,j)-stripe_radius):...
+                                min(center_mat(k,j)+stripe_radius,xDim),t) = stripe_id_vec_all(j);
             end  
             if isnan(neighbor_vec(j))&& ~isnan(neighbor_vec(j+2)) % nan on left
                 for k = 1:size(stripe_mat,1)
                     stripe_id_mat_full(k,max(1,center_mat(k,j) - 3*stripe_radius):...
-                                center_mat(k,j)-stripe_radius-1,t) = stripe_id_vec_all(j) - 1/3;
-                    stripe_id_mat_full(k,min(1024,center_mat(k,j) + stripe_radius + 1):...
+                                max(center_mat(k,j)-stripe_radius-1,1),t) = stripe_id_vec_all(j) - 1/3;
+                    stripe_id_mat_full(k,min(xDim,center_mat(k,j) + stripe_radius + 1):...
                                 round(.5*(center_mat(k,j)+center_mat(k,j+1))),t) =...
                                 stripe_id_vec_all(j) + 1/3;                            
                 end                                                 
@@ -222,15 +222,15 @@ for i = 1:length(set_index)
                 for k = 1:size(stripe_mat,1)
                     stripe_id_mat_full(k,round(.5*(center_mat(k,j)+center_mat(k,j-1))):...
                                 center_mat(k,j)-stripe_radius-1,t) = stripe_id_vec_all(j) - 1/3;
-                    stripe_id_mat_full(k,min(1024,center_mat(k,j) + stripe_radius + 1):...
-                                min(1024,center_mat(k,j) + 3*stripe_radius),t) =...
+                    stripe_id_mat_full(k,min(xDim,center_mat(k,j) + stripe_radius + 1):...
+                                min(xDim,center_mat(k,j) + 3*stripe_radius),t) =...
                                 stripe_id_vec_all(j) + 1/3;                             
                 end     
             elseif isnan(neighbor_vec(j))&& isnan(neighbor_vec(j+2)) % nan on both sides
                 for k = 1:size(stripe_mat,1)
                     stripe_id_mat_full(k,max(1,center_mat(k,j) - 3*stripe_radius):...
                                 center_mat(k,j)-stripe_radius-1,t) = stripe_id_vec_all(j) - 1/3;
-                    stripe_id_mat_full(k,min(1024,center_mat(k,j) + stripe_radius + 1):...
+                    stripe_id_mat_full(k,min(xDim,center_mat(k,j) + stripe_radius + 1):...
                                 min(xDim,center_mat(k,j) + 3*stripe_radius),t) =...
                                 stripe_id_vec_all(j) + 1/3;                             
                 end     
@@ -244,10 +244,7 @@ for i = 1:length(set_index)
                 end
             end
         end
-    end    
-    if plot_times(j) == 27
-            error('asfas')
-    end
+    end  
     stripe_id_mat_show = stripe_id_mat_full;
     stripe_id_mat_show(isnan(stripe_id_mat_show)) = 0;
     mode_stripe_id_mat = mode(stripe_id_mat_show(:,:,plot_times>=min_time_5),3);    

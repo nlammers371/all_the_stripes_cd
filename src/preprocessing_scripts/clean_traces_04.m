@@ -10,7 +10,7 @@ FOV_edge_padding = 20; % pixels
 xDim = 1024;
 %------------------------Import Raw Trace Set------------------------%
 %ID's of sets to includeg
-project = 'eve7stripes_inf_2018_03_27_final';
+project = 'eve7stripes_inf_2018_04_20';
 print_traces = 0; %Output PNG files for traces?
 
 %---------------------------Set Paths-------------------------------------%

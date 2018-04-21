@@ -5,7 +5,7 @@ close all
 clear 
 
 % set filenames
-project = 'eve7stripes_inf_2018_03_27_final'; %Project Identifier
+project = 'eve7stripes_inf_2018_03_27'; %Project Identifier
 
 fig_path = ['../../fig/experimental_system/' project '/stripe_dynamics/'];
 data_path = ['../../dat/' project '/']; % data mat directory
@@ -92,7 +92,7 @@ end
 set_index = unique(set_vec_particle);
 %%
 stripe_dynamics_struct = struct; % save stripe location arrays
-for i = 2:length(set_index)
+for i = 1%1:length(set_index)
     stripe_id_array = stripe_pos_struct(i).stripe_id_mat;
     % particle info
     tr_xp_set_vec = xPos_vec_particle(set_vec_particle==set_index(i));
