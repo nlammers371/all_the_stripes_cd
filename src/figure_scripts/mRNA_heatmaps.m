@@ -5,8 +5,6 @@ close all
 %------------------------------Set System Params--------------------------%
 
 %%% define ID variables
-datatype = 'weka';
-inference_type = 'set_bootstrap_results';
 project = 'eve7stripes_inf_2018_03_27_final'; %project identifier
 FigPath = ['../../fig/experimental_system/' project '/mRNA_maps/'];
 mkdir(FigPath)
@@ -65,7 +63,7 @@ for i = 1:length(trace_struct_final)
     trace_ap_vector = [trace_ap_vector [trace_struct_final([trace_struct_final.setID]==i).ap_vector]];
 end
 %%
-%%% get average stripe positions. use to assign stripe positions
+%%% get average stripe positions
 stripe_t_vec = stripe_pos_struct(1).plot_times;
 map_filter = stripe_t_vec == t_map;
 stripe_pos_mat= NaN(length(set_index),7);
@@ -78,14 +76,14 @@ for i = 1:length(set_index)
     set_stripes = set_stripes(~isnan(set_stripes)); 
     set_stripes = set_stripes(set_stripes>0);
     centroid_mat = fov_stripe_partitions(i).stripe_centroids_ap;
-    
+    % take average of stripe centers
     for s = 1:length(set_stripes)
         stripe_pos_mat(i,set_stripes(s)) =nanmean(centroid_mat(:,set_stripes(s)));
     end
 end
 
-stripe_positions_ap = nanmean(stripe_pos_mat); 
-stripe_positions = (stripe_positions_ap-ap_start/100)*xDim_projection/(ap_stop-ap_start)*100;
+stripe_positions_ap = nanmean(stripe_pos_mat); %cross-set mean
+stripe_positions_pix = (stripe_positions_ap-ap_start/100)*xDim_projection/(ap_stop-ap_start)*100;
 xlabel_vec = ap_start:10:ap_stop;
 xtick_vec = (xlabel_vec-ap_start)*xDim_projection/(ap_stop-ap_start);
 
@@ -93,7 +91,7 @@ xtick_vec = (xlabel_vec-ap_start)*xDim_projection/(ap_stop-ap_start);
 
 % currently I apply a transformation to each set to generate a consistent
 % mapping to the projection space. In future I will also account for
-% "smearing" of x projection do to non-vertical stripes (eg 7)
+% "smearing" of x projection do to non-vertical stripes (eg for stripe 7)
 
 set_map_filter_mat = NaN(length(set_index),xDim_image);
 set_map_warp_factors = NaN(length(set_index),xDim_image);
@@ -110,7 +108,7 @@ for i = 1:length(set_index)
     for j = set_stripes
         xp_stripe = round(mean(x_ref_mat(stripe_id_mat==j)));
         x_orig_vec = [x_orig_vec xp_stripe];
-        x_map_vec = [x_map_vec stripe_positions(j)];
+        x_map_vec = [x_map_vec stripe_positions_pix(j)];
 %         error('asfa')
     end    
     warp_factors = diff(x_map_vec)./diff(x_orig_vec); % mapping constants

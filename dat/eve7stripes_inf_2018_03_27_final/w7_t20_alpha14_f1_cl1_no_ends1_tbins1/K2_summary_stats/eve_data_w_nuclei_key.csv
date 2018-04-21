@@ -1,7 +1,8 @@
 nucleus_id,unique nulclues identifier
 particle_id,unique particle identifier--only populated when particle is active
 set_id,set num
-ap,nucleus ap position (fraction x/L)
+ap_raw,nucleus ap position (fraction x/L)
+ap_registered,"""registered"" nucleus ap position to enforce consitent stripe positions across sets (fraction x/L)"
 xPos,nucleus x position in FOV
 yPos,nucleus y position in FOV
 stripe_id,nucleus stripe id -- may vary over time

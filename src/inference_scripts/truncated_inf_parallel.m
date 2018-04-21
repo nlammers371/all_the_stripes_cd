@@ -15,10 +15,10 @@ if savio
         bin_groups{i} = ap_ref_index(savio_groups{i});
     end
 else
-    bin_groups = {3.3};
-%     for i = 2:22
-%         bin_groups = [bin_groups{:} {round(i/3,1)}];
-%     end
+    bin_groups = {};
+    for i = 2:22
+        bin_groups = [bin_groups{:} {round(i/3,1)}];
+    end
 end
 %-------------------------------System Vars-------------------------------%
 w = 7; % Memory

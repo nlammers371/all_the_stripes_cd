@@ -16,6 +16,7 @@ print_traces = 0; %Output PNG files for traces?
 %---------------------------Set Paths-------------------------------------%
 TracePath = ['../../dat/' project '/' 'raw_traces_02_' project '.mat'];
 NucleusPath = ['../../dat/' project '/' 'ellipse_info_02_' project '.mat'];
+
 OutPath = ['../../dat/' project '/'];
 FigPath = ['../../fig/experimental_system/' project '/preprocessing'];
 TraceSavePath = [FigPath '/traces/'];
@@ -27,21 +28,27 @@ CleanTraceName = ['inference_traces_' project '_dT' num2str(Tres_interp) '.mat']
 CleanNucleusName = ['inference_nuclei_' project '_dT' num2str(Tres_interp) '.mat'];
 
 %----------------Load Traces and Perform First Pass QC--------------------%
-%Load raw traces (saved in struct titled "trace_struct")
+%Load raw traces (saved in struct titled "trace_struct") and nuclei
+%("schnitz_struct")
 load(TracePath);
 load(NucleusPath);
-set_index = unique([trace_struct.setID]);
+% load stripe position data
+load(['..\..\dat\' project '\stripe_pos_' project '.mat']) % load stripe position info
+load(['..\..\dat\' project '\fov_partitions.mat']);
+
+
 %%% Cleaning Parameters
+set_index = unique([trace_struct.setID]);
 big_jump1 = prctile([trace_struct.fluo],99);
 jump_threshold1 = big_jump1/1.5; % this should be a conservative threshold for single time step increase
 index_vec = 1:length(trace_struct); % convenience ref vector
 field_names = fieldnames(trace_struct);
 %%% remove small set of duplicates
 rm_indices = [];
-particle_vec = [trace_struct.ParticleID];
-for p = 1:length(particle_vec)
+nucleus_vec = [trace_struct.ParticleID];
+for p = 1:length(nucleus_vec)
     pID = trace_struct(p).ParticleID;
-    matches = find(particle_vec == pID);
+    matches = find(nucleus_vec == pID);
     if length(matches) > 1
         rm_indices = [rm_indices matches(2:end)];
     end
@@ -107,6 +114,8 @@ for i = 1:length(trace_struct)
     temp.stripe_id_vec_interp = round(3*temp.stripe_id_vec_interp)/3; 
     temp.fluo_interp = trace1_interp;
     temp.time_interp = time_interp;
+    temp.setID_long = repelem(temp.setID,length(temp.time_interp));
+    temp.ParticleID_long = repelem(temp.ParticleID,length(temp.time_interp));
     temp.inference_flag = quality_flag;
     trace_struct_final = [trace_struct_final temp];    
 end
@@ -140,7 +149,7 @@ end
 
 padding = 10; % tolerance for missing frames at end or beginning of nc14 
 trace_particle_vec = [trace_struct_final.ParticleID];
-nuclei_clean = [];
+nucleus_struct_final = [];
 rm_counts = 0;
 set_vec = unique([trace_struct_final.setID]);
 for i = 1:length(schnitz_struct)
@@ -169,6 +178,8 @@ for i = 1:length(schnitz_struct)
         temp.([interp_fields{j} '_interp']) = interp;
     end    
     temp.stripe_id_vec_interp = round(temp.stripe_id_vec_interp*3)/3;
+    temp.setID_long = repelem(temp.setID,length(temp.time_interp));
+    temp.ncID_long = repelem(temp.ncID,length(temp.time_interp));
     FOV_flags = (temp.xPos_interp > FOV_edge_padding) & (temp.xPos_interp < 1024- FOV_edge_padding)...
         &(temp.yPos_interp > FOV_edge_padding) & (temp.yPos_interp < 256 - FOV_edge_padding);    
     FOV_flags_all = zeros(size(InterpGrid));
@@ -195,29 +206,96 @@ for i = 1:length(schnitz_struct)
         error('Degenerate Identifiers')
     end
     temp.TraceIndex = trace_ind;
-    nuclei_clean = [nuclei_clean temp];
+    nucleus_struct_final = [nucleus_struct_final temp];
 end
+
+%----------------calculate consistent "effective" AP mapping--------------%
+%%% get average stripe positions
+stripe_t_vec = stripe_pos_struct(1).plot_times;
+t_map = 35;
+map_filter = stripe_t_vec == t_map;
+stripe_pos_mat= NaN(length(set_index),7);
+for i = 1:length(set_index)
+    stripe_id_mat = stripe_pos_struct(set_index(i)).stripe_id_mat(:,:,map_filter);    
+    set_stripes = unique(round(stripe_id_mat))';
+    set_stripes = set_stripes(~isnan(set_stripes)); 
+    set_stripes = set_stripes(set_stripes>0);
+    centroid_mat = fov_stripe_partitions(i).stripe_centroids_ap;
+    % take average of stripe centers
+    for s = 1:length(set_stripes)
+        stripe_pos_mat(i,set_stripes(s)) =nanmean(centroid_mat(:,set_stripes(s)));
+    end
+end
+
+stripe_positions_ap = nanmean(stripe_pos_mat); %cross-set mean
+%%% calculate mapping transformation for each set
+ap_raw_vec = [nucleus_struct_final.ap_vector_interp];
+set_vec = [nucleus_struct_final.setID_long];
+nucleus_vec = [nucleus_struct_final.ncID_long];
+ap_new_vec = NaN(1,length(ap_raw_vec));
+
+for i = 1:length(set_index)
+    stripe_id_mat = stripe_pos_struct(i).stripe_id_mat(:,:,map_filter);
+    stripe_ap_mat = fov_stripe_partitions(i).ap_ref_mat;
+    set_stripes = unique(round(stripe_id_mat))';
+    set_stripes = set_stripes(~isnan(set_stripes)); 
+    set_stripes = set_stripes(set_stripes>0);   
+    
+    % mapping vectors
+    ap_orig_vec = []; 
+    ap_map_vec = [];
+    % calculate x center for each stripe
+    for j = set_stripes
+        ap_stripe = mean(stripe_ap_mat(stripe_id_mat==j));
+        ap_orig_vec = [ap_orig_vec ap_stripe];
+        ap_map_vec = [ap_map_vec stripe_positions_ap(j)];
+    end    
+    warp_factors = diff(ap_map_vec)./diff(ap_orig_vec); % mapping constants
+    ap_orig_centers = (ap_orig_vec(2:end)+ap_orig_vec(1:end-1))/2;
+    offsets = (ap_map_vec(2:end)+ap_map_vec(1:end-1))/2 - ...
+        ap_orig_centers;
+    offsets = offsets + ap_orig_centers;    
+    set_filter = set_vec == set_index(i);
+    ap_new_vec(ap_raw_vec<ap_orig_vec(1)&set_filter) = warp_factors(1)*(...
+            ap_raw_vec(ap_raw_vec<ap_orig_vec(1)&set_filter)-ap_orig_centers(1))+offsets(1);    
+    for j = 1:length(set_stripes)-1
+        ap_filter = ap_raw_vec<ap_orig_vec(j+1)&ap_raw_vec>=ap_orig_vec(j)&set_filter;        
+        ap_new_vec(ap_filter) = warp_factors(j).*(...
+            ap_raw_vec(ap_filter)-ap_orig_centers(j))+offsets(j);        
+    end    
+    ap_new_vec(set_filter&ap_raw_vec>ap_orig_vec(end)) = warp_factors(end)*(...
+            ap_raw_vec(ap_raw_vec>ap_orig_vec(end)&set_filter)-ap_orig_centers(end)) + offsets(end);        
+end
+% now assign new ap positions
+nc_vec = [nucleus_struct_final.ncID];
+nc_index = unique(nc_vec);
+for i = 1:length(nc_index)
+    nucleus_struct_final(nc_vec==nc_index(i)).ap_vector_warped = ...
+        ap_new_vec(nucleus_vec==nc_index(i));
+end
+
+
 %%% Now add flag to trace struct indicating which traces correspond to
 %%% "good" nuclei
 % cross-reference id variables for consistency check
 trace_nucleus_vec = [trace_struct_final.ncID];
 % trace index var
-NucleusTraceIndices = [nuclei_clean.TraceIndex];
+NucleusTraceIndices = [nucleus_struct_final.TraceIndex];
 
 for i = 1:length(trace_struct_final)
     pID = trace_struct_final(i).ParticleID;
     ncInd = find(NucleusTraceIndices==i);
-    pIDCross = nuclei_clean(ncInd).ParticleID;
+    pIDCross = nucleus_struct_final(ncInd).ParticleID;
     if pIDCross ~= pID
         error('Inconsistent Identifiers')
     end
-    trace_struct_final(i).FOV_flags = nuclei_clean(ncInd).FOV_flags;
-    trace_struct_final(i).nc14_flag = nuclei_clean(ncInd).nc14_flag;
+    trace_struct_final(i).FOV_flags = nucleus_struct_final(ncInd).FOV_flags;
+    trace_struct_final(i).nc14_flag = nucleus_struct_final(ncInd).nc14_flag;
 end
 
 % save
 save([OutPath CleanTraceName],'trace_struct_final');
-save([OutPath CleanNucleusName],'nuclei_clean');
+save([OutPath CleanNucleusName],'nucleus_struct_final');
 
 %%% If desired, save individual trace plots
 if print_traces

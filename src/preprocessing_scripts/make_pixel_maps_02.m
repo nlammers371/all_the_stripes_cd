@@ -42,6 +42,9 @@ for i = 1:length(set_index)
     end
     all_y = [trace_struct([trace_struct.setID]==i).yPos];
     beta = regress(all_ap',[ones(size(all_x))' all_x' all_y']);
+    %%% make ap-to-pixel map
+    [x_ref, y_ref] = meshgrid(1:xDim,1:yDim);
+    ap_mat = beta(1) + beta(2)*x_ref + beta(3)*y_ref;
     
     %%% assign ap vectors to nuclei
     nc_set_ind = find(nc_set_vec==set_index(i));
@@ -98,6 +101,7 @@ for i = 1:length(set_index)
     fov_stripe_partitions(i).stripe_id_mat = set_stripe_map;
     fov_stripe_partitions(i).stripe_centroids = set_centroids_pix;
     fov_stripe_partitions(i).stripe_centroids_ap = set_centroids_ap;
+    fov_stripe_partitions(i).ap_ref_mat = ap_mat;
     fov_stripe_partitions(i).t_track = track_times;
 end
 save([data_path 'fov_partitions.mat'],'fov_stripe_partitions')
