@@ -8,9 +8,10 @@ Tres_interp = 20;
 InterpGrid = 0:Tres_interp:60*50;
 FOV_edge_padding = 20; % pixels
 xDim = 1024;
+yDim = 256;
 %------------------------Import Raw Trace Set------------------------%
 %ID's of sets to includeg
-project = 'eve7stripes_inf_2018_04_20';
+project = 'eve7stripes_inf_2018_03_27_final';
 print_traces = 0; %Output PNG files for traces?
 
 %---------------------------Set Paths-------------------------------------%
@@ -230,6 +231,7 @@ end
 stripe_positions_ap = nanmean(stripe_pos_mat); %cross-set mean
 %%% calculate mapping transformation for each set
 ap_raw_vec = [nucleus_struct_final.ap_vector_interp];
+yp_vec = [nucleus_struct_final.yPos_interp];
 set_vec = [nucleus_struct_final.setID_long];
 nucleus_vec = [nucleus_struct_final.ncID_long];
 ap_new_vec = NaN(1,length(ap_raw_vec));
@@ -240,31 +242,32 @@ for i = 1:length(set_index)
     set_stripes = unique(round(stripe_id_mat))';
     set_stripes = set_stripes(~isnan(set_stripes)); 
     set_stripes = set_stripes(set_stripes>0);   
-    
-    % mapping vectors
-    ap_orig_vec = []; 
-    ap_map_vec = [];
-    % calculate x center for each stripe
-    for j = set_stripes
-        ap_stripe = mean(stripe_ap_mat(stripe_id_mat==j));
-        ap_orig_vec = [ap_orig_vec ap_stripe];
-        ap_map_vec = [ap_map_vec stripe_positions_ap(j)];
-    end    
-    warp_factors = diff(ap_map_vec)./diff(ap_orig_vec); % mapping constants
-    ap_orig_centers = (ap_orig_vec(2:end)+ap_orig_vec(1:end-1))/2;
-    offsets = (ap_map_vec(2:end)+ap_map_vec(1:end-1))/2 - ...
-        ap_orig_centers;
-    offsets = offsets + ap_orig_centers;    
-    set_filter = set_vec == set_index(i);
-    ap_new_vec(ap_raw_vec<ap_orig_vec(1)&set_filter) = warp_factors(1)*(...
-            ap_raw_vec(ap_raw_vec<ap_orig_vec(1)&set_filter)-ap_orig_centers(1))+offsets(1);    
-    for j = 1:length(set_stripes)-1
-        ap_filter = ap_raw_vec<ap_orig_vec(j+1)&ap_raw_vec>=ap_orig_vec(j)&set_filter;        
-        ap_new_vec(ap_filter) = warp_factors(j).*(...
-            ap_raw_vec(ap_filter)-ap_orig_centers(j))+offsets(j);        
-    end    
-    ap_new_vec(set_filter&ap_raw_vec>ap_orig_vec(end)) = warp_factors(end)*(...
-            ap_raw_vec(ap_raw_vec>ap_orig_vec(end)&set_filter)-ap_orig_centers(end)) + offsets(end);        
+    for k = 1:yDim
+        % mapping vectors
+        ap_orig_vec = []; 
+        ap_map_vec = [];
+        % calculate x center for each stripe
+        for j = set_stripes
+            ap_stripe = mean(stripe_ap_mat(k,stripe_id_mat(k,:)==j));
+            ap_orig_vec = [ap_orig_vec ap_stripe];
+            ap_map_vec = [ap_map_vec stripe_positions_ap(j)];
+        end    
+        warp_factors = diff(ap_map_vec)./diff(ap_orig_vec); % mapping constants
+        ap_orig_centers = (ap_orig_vec(2:end)+ap_orig_vec(1:end-1))/2;
+        offsets = (ap_map_vec(2:end)+ap_map_vec(1:end-1))/2 - ...
+            ap_orig_centers;
+        offsets = offsets + ap_orig_centers;    
+        set_y_filter = set_vec == set_index(i) & yp_vec == k;
+        ap_new_vec(ap_raw_vec<ap_orig_vec(1)&set_y_filter) = warp_factors(1)*(...
+                ap_raw_vec(ap_raw_vec<ap_orig_vec(1)&set_y_filter)-ap_orig_centers(1))+offsets(1);    
+        for j = 1:length(set_stripes)-1
+            ap_filter = ap_raw_vec<ap_orig_vec(j+1)&ap_raw_vec>=ap_orig_vec(j)&set_y_filter;        
+            ap_new_vec(ap_filter) = warp_factors(j).*(...
+                ap_raw_vec(ap_filter)-ap_orig_centers(j))+offsets(j);        
+        end    
+        ap_new_vec(set_y_filter&ap_raw_vec>ap_orig_vec(end)) = warp_factors(end)*(...
+                ap_raw_vec(ap_raw_vec>ap_orig_vec(end)&set_y_filter)-ap_orig_centers(end)) + offsets(end);        
+    end
 end
 % now assign new ap positions
 nc_vec = [nucleus_struct_final.ncID];
