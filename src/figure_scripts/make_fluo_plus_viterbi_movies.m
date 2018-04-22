@@ -85,6 +85,8 @@ for set_num = 1:length(cp_filenames)
     prefix_mask_v_movie_path = [mask_movie_path '/' Prefix '/fluo_mask_frames_viterbi/'];
     mkdir(prefix_mask_v_movie_path);
     set_struct = trace_struct([trace_struct.setID]==set_num);
+    frame_time_vec = ElapsedTime;
+    frame_time_vec = frame_time_vec(nc14:end);
     % make ref vectors
     fluo_vec = [set_struct.fluo];
     time_vec = [set_struct.time];
@@ -132,8 +134,8 @@ for set_num = 1:length(cp_filenames)
             catch
                 warning(['Nucleus Indexing Error in Frame ' num2str(CurrentFrame)])
             end
-        end
-        frame_time = unique(time_vec(frame_vec==CurrentFrame));
+        end        
+        frame_time = frame_time_vec(CurrentFrame==FrameRange);
         % reference frame index cell
         extant_nuclei = nc_index(start_frame_vec<=CurrentFrame&stop_frame_vec...
             >=CurrentFrame);
