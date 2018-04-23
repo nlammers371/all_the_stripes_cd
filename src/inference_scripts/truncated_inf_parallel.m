@@ -68,7 +68,7 @@ sample_size = 5000;
 min_dp_per_inf = 750; % inference will be aborted if fewer present
 
 %----------------------------Set Write Paths------------------------------%
-project = 'eve7stripes_inf_2018_03_27_final';
+project = 'eve7stripes_inf_2018_04_20';
 datapath = ['../../dat/' project '/']; %Path to raw data
 % generate read and write names
 dataname = ['inference_traces_' project '_dT' num2str(Tres) '.mat'];

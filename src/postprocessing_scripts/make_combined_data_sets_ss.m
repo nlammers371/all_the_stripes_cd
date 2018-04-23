@@ -172,7 +172,7 @@ v_state_fig = figure;
 colormap(cm)
 imagesc(v_activity_mat(10:end,:)-1)
 set(gca,'xtick',2:3:22,'xticklabels',1:7)
-set(gca,'ytick',0:5:40,'yticklabels',10:5:50)
+set(gca,'ytick',0:5:50,'yticklabels',0:5:50)
 title('fraction active viterbi states over time')
 colorbar
 saveas(v_state_fig,[DataPath '\viterbi_stripe_tracking_check.png'],'png')
