@@ -4,7 +4,7 @@ close all
 clear 
 
 % set filenames
-project = 'eve7stripes_inf_2018_04_20'; %Project Identifier
+project = 'eve7stripes_inf_2018_04_28'; %Project Identifier
 fig_path = ['../../fig/experimental_system/' project '/preprocessing/'];
 data_path = ['../../dat/' project '/']; % data mat directory
 
@@ -78,6 +78,7 @@ for i = 1:length(set_index)
     time_set_vec = time_vec_particle(set_vec_particle==set_index(i));    
     %%% extract stripe pixel map array
     stripe_mat_all = fov_stripe_partitions(i).stripe_id_mat;        
+    edge_mat_all = fov_stripe_partitions(i).edge_flag_mat;        
     %%% handle inversions    
     [~, ap_min] = min(ap_set_vec);
     [~, ap_max] = max(ap_set_vec);
@@ -147,9 +148,9 @@ for i = 1:length(set_index)
             y_vec_sp = (1:size(stripe_mat,1))';
             pp = polyfit(y_vec,x_vec,3); % fit 4th degree polynomial to data
             poly = polyval(pp,y_vec_sp);             
-            if  mean(poly) <= stripe_radius ... %sum(abs(diff(poly))) > yDim ||
-                    ||mean(poly) >= xDim - stripe_radius ||...
-                    (i == 2 && plot_times(j)<35 && stripe_id_vec(k)==7) % special case for stripe 7 in set 2
+%             if  median(poly) <= stripe_radius || sum(abs(diff(poly))) > yDim...
+%                     ||median(poly) >= xDim - stripe_radius ||...
+            if (i == 2 && plot_times(j)<35 && stripe_id_vec(k)==7) % special case for stripe 7 in set 2
                 if plot_times(j) < min_time 
                        spline_mat_stable(:,ismember(stripe_id_vec_all,stripe_id_vec(k)))...
                             = nanmean(temporal_spline_mat_stable(:,ismember(stripe_id_vec_all,stripe_id_vec(k)),ismember(plot_times,min_time:min_time+4)),3);                        

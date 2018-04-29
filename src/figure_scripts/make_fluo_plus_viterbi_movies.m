@@ -8,7 +8,8 @@ FolderPath = 'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\';
 FISHPath = 'D:\Data\Augusto\LivemRNA\Data\PreProcessedData';
 project = 'eve7stripes_inf_2018_04_20'; %Project Identifier
 % folders
-mask_movie_path = ['../../fig/experimental_system/' project '/movies/'];
+DBPath = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)\';
+mask_movie_path = [DBPath 'eveProject/SlidesAndFigures/DataMovies/fluo_mask_viterbi/'];
 data_path = ['../../dat/' project '/']; % data mat directory
 
 % make filepaths
@@ -78,14 +79,13 @@ for set_num = 1:length(cp_filenames)
     setID = set_num;
     last_frame = max([trace_struct([trace_struct.setID]==setID).all_frames]);
     % first_frame = min([trace_struct_filtered([trace_struct_filtered.setID]==setID).all_frames]);
-    FrameRange=nc14:last_frame;
-
+    FrameRange=nc14:last_frame;    
     %%% Make Movie with Nucleus Masks Indicating Instantaneous Spot Fluo
     % Set write directory
     prefix_mask_v_movie_path = [mask_movie_path '/' Prefix '/fluo_mask_frames_viterbi/'];
     mkdir(prefix_mask_v_movie_path);
     set_struct = trace_struct([trace_struct.setID]==set_num);
-    frame_time_vec = ElapsedTime;
+    frame_time_vec = ElapsedTime - ElapsedTime(nc14);
     frame_time_vec = frame_time_vec(nc14:end);
     % make ref vectors
     fluo_vec = [set_struct.fluo];
@@ -93,14 +93,28 @@ for set_num = 1:length(cp_filenames)
     time_vec = time_vec(~isnan(fluo_vec));
     fluo_vec = fluo_vec(~isnan(fluo_vec));
     frame_vec = [set_struct.cp_frames];    
-    stripe_id_vec = [set_struct.stripe_id_vec];
+%     stripe_id_vec = [set_struct.stripe_id_vec];
+    stripe_id_vec = [];
     xPos_vec = [set_struct.xPos];
     nc_index = [set_struct.Nucleus];
     start_frame_vec = [];
     stop_frame_vec = [];
     nucleus_vec = [];   
     particle_vec = [];
-    for j = 1:length(set_struct)                
+    for j = 1:length(set_struct)     
+        tr_t_vec = set_struct(j).time;
+        tr_f_vec = set_struct(j).fluo;
+        tr_t_vec = tr_t_vec(~isnan(tr_f_vec));
+%         stripe_id_vec = [stripe_id_vec repelem(mode(...
+%             set_struct(j).stripe_id_vec(tr_t_vec>1500))...
+%             ,length(set_struct(j).stripe_id_vec))];
+        tr_stripe_id = set_struct(j).stripe_id_vec;
+        tr_stripe_id = tr_stripe_id(~isnan(tr_stripe_id));
+        if isempty(tr_stripe_id)
+            tr_stripe_id = NaN;
+        end
+        stripe_id_vec = [stripe_id_vec repelem(tr_stripe_id(end),...
+            length(set_struct(j).stripe_id_vec))];
         nucleus_vec = [nucleus_vec repelem(set_struct(j).Nucleus,length(set_struct(j).xPos))];                
         start_frame_vec = [start_frame_vec min(set_struct(j).cp_frames)];
         stop_frame_vec = [stop_frame_vec max(set_struct(j).cp_frames)];
@@ -152,12 +166,14 @@ for set_num = 1:length(cp_filenames)
                 s_vec = round(stripe_id_vec(nucleus_vec==Nucleus));
                 [~,t_ind] = min(abs(t_vec-frame_time));
                 stripe_id = s_vec(t_ind);
+            else
+                fluo = fluo(end);
             end
             if isempty(stripe_id)
                stripe_id = 0;
             end
             if isnan(stripe_id)
-                stripe_color = [1 1 1]*min(1,max(.4,fluo/MaxFluo));
+                stripe_color = [1 1 1]*min(1,max(.2,fluo/MaxFluo));
             else
                 stripe_color = stripe_colors(stripe_id,:)*min(1,max(.2,fluo/MaxFluo));
             end
@@ -187,7 +203,7 @@ for set_num = 1:length(cp_filenames)
             else
                 v_fit = viterbi_fit_struct(v_index).v_fit;
                 v_time = v_fit.time_exp;
-                d_time = v_time-frame_time;
+                d_time = v_time-60*frame_time;
                 d_time(d_time>0) = 0;
                 [~, mi] = max(d_time);
                 v_state = v_fit.z_viterbi(mi);
