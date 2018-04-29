@@ -185,7 +185,7 @@ ap_raw = longform_data(:,4);
 time_vec = longform_data(:,10);
 
 hold on
-% scatter(ap_raw,time_vec,40,stripe_bin_vec)
+% scatter(ap_raw,time_vec,40,stripeedit csvwrite_with_headers_bin_vec)
 s = scatter(ap_registered,time_vec,40,stripe_bin_vec,'filled');
 s.MarkerFaceAlpha = .1;
 s.MarkerEdgeAlpha = 0;
