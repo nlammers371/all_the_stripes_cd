@@ -1,8 +1,8 @@
 % Script to Conduct HMM Inference on Experimental Data
 close all
 clear 
-% addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
-addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
+addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
+% addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 savio = 0; % Specify whether inference is being conducted on Savio Cluster
 ap_ref_index = 1:7;
 ap_ref_index = reshape([ap_ref_index-1/3 ;ap_ref_index; ap_ref_index + 1/3],1,[]);
@@ -15,10 +15,10 @@ if savio
         bin_groups{i} = ap_ref_index(savio_groups{i});
     end
 else
-    bin_groups = {2:22};
-%     for i = 2:22
-%         bin_groups = [bin_groups{:} {round(i/3,1)}];
-%     end
+    bin_groups = {};
+    for i = 2:22
+        bin_groups = [bin_groups{:} {round(i/3,1)}];
+    end
 end
 %-------------------------------System Vars-------------------------------%
 w = 7; % Memory
@@ -36,8 +36,8 @@ n_steps_max = 500; % set max steps per inference
 eps = 1e-4; % set convergence criteria
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Thes may chaange
-inference_times = 25*60;%(10:5:45)*60;
-t_window = 50*60; % determines width of sliding window
+inference_times = 40*60;%(10:5:45)*60;
+t_window = 30*60; % determines width of sliding window
 K = 2; % State(s) to use for inference
 %------------------Define Inference Variables------------------------------%
 %if 1, prints each local em result to file (fail-safe in event that
@@ -85,8 +85,8 @@ out_suffix =  ['/' project '/w' num2str(w) '_t' num2str(Tres)...
 if savio
     out_prefix = '/global/scratch/nlammers/eve7stripes_data/inference_out/';
 else    
-%     out_prefix = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
-    out_prefix = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+    out_prefix = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+%     out_prefix = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
 end
 out_dir = [out_prefix out_suffix];
 mkdir(out_dir);
