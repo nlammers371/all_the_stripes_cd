@@ -4,7 +4,7 @@ close all
 % clear 
 
 % set filenames
-project = 'eve7stripes_inf_2018_04_20'; %Project Identifier
+project = 'eve7stripes_inf_2018_04_28'; %Project Identifier
 fig_path = ['../../fig/experimental_system/' project '/preprocessing/'];
 data_path = ['../../dat/' project '/']; % data mat directory
 
@@ -64,9 +64,19 @@ for i = 1:length(set_index)
     %%% impossible x values
     a_mat_pix(a_mat_pix<1) = 1;
     p_mat_pix(p_mat_pix>xDim) = xDim;
-    c_mat = (beta(2).^-1)*(cluster_struct.final_centroid_mat(:,:,i)-beta(1) - beta(3)*128);
+    c_mat_pix = (beta(2).^-1)*(cluster_struct.final_centroid_mat(:,:,i)-beta(1) - beta(3)*128);
     c_mat_ap = cluster_struct.final_centroid_mat(:,:,i);
     
+    edge_flags = cluster_struct.final_edge_flag_mat(:,:,i);
+    if i == 10
+        edge_flags(:,4) = 1; % spot fix for set 11
+    end
+    % remove edge cases
+    a_mat_pix(edge_flags==1) = NaN;
+    p_mat_pix(edge_flags==1) = NaN;
+    c_mat_pix(edge_flags==1) = NaN;
+    c_mat_ap(edge_flags==1) = NaN;
+    % store interp results
     a_mat_pix_interp = NaN(length(plot_times),7);
     p_mat_pix_interp = NaN(length(plot_times),7);
     c_mat_pix_interp = NaN(length(plot_times),7);
@@ -77,15 +87,16 @@ for i = 1:length(set_index)
     for k = 1:7
         a_mat_pix_interp(:,k) = round(interp1(track_times,a_mat_pix(:,k)',plot_times));
         p_mat_pix_interp(:,k) = round(interp1(track_times,p_mat_pix(:,k),plot_times));
-        c_mat_pix_interp(:,k) = round(interp1(track_times,c_mat(:,k),plot_times));
+        c_mat_pix_interp(:,k) = round(interp1(track_times,c_mat_pix(:,k),plot_times));
         c_mat_ap_interp(:,k) = interp1(track_times,c_mat_ap(:,k),plot_times);
     end    
+%     error('asda')
     for t = 1:size(a_mat_pix_interp,1) % iterate through times
         a_vec = a_mat_pix_interp(t,:);
         p_vec = p_mat_pix_interp(t,:);
         c_vec_pix = c_mat_pix_interp(t,:);
         c_vec_ap = c_mat_ap_interp(t,:);
-        stripe_id_vec = find(~isnan(p_vec));
+        stripe_id_vec = find(~isnan(c_vec_ap));
         a_vec = a_vec(~isnan(p_vec));        
         p_vec = p_vec(~isnan(p_vec));        
         c_vec_pix = c_vec_pix(~isnan(c_vec_pix));        
@@ -103,6 +114,7 @@ for i = 1:length(set_index)
     fov_stripe_partitions(i).stripe_centroids_ap = set_centroids_ap;
     fov_stripe_partitions(i).ap_ref_mat = ap_mat;
     fov_stripe_partitions(i).t_track = track_times;
+    fov_stripe_partitions(i).edge_flag_mat = edge_flags;
 end
 save([data_path 'fov_partitions.mat'],'fov_stripe_partitions')
 save(nucleus_name, 'schnitz_struct');

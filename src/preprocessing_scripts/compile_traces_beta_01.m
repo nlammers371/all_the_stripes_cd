@@ -3,7 +3,7 @@ close all
 clear 
 %------------------------Set Path Specs, ID Vars------------------------%
 FolderPath = 'D:\Data\Augusto\LivemRNA\Data\Dropbox\eveProject\eve7stripes\';
-project = 'eve7stripes_inf_2018_04_20'; %Project Identifier
+project = 'eve7stripes_inf_2018_04_28'; %Project Identifier
 % folders
 fig_path = ['../../fig/experimental_system/' project '/preprocessing/'];
 data_path = ['../../dat/' project '/']; % data mat directory
@@ -200,8 +200,6 @@ end
 
 %%% Look for trace fragments that belong together. Stitch them up
 
-%%% This is premised on the trace start times being sorted in ascending
-%%% order!
 set_vec = [trace_struct.setID];
 set_index = unique(set_vec);
 % stitch together overlaps
@@ -313,317 +311,310 @@ stripe_colors = cm(1+((1:7)-1)*increment,:);
 
 %%% Use 1D Clustering to Find Stripe Centers
 close all
-
 stripe_radius = .015;
+t_window = 300;
 cluster_path = [ap_pos_path '/stripe_fits/'];
 mkdir(cluster_path);
-use_old_boundaries = input('Use previous stripe boundaries (1=yes, 0=no)?');
-if use_old_boundaries == 1
-    load([DataPath 'coarse_stripe_centroids.mat'])    
-else
-    %%% tracking parameters
-    cluster_struct = struct;
-    t_window = 300;
-    track_times = 10:10:50;
-    % record param values
-    cluster_struct.track_times = track_times;
-    cluster_struct.t_window = t_window;
-    stripe_prior_mat = NaN(length(track_times),7);
-    %Create Arrays to store total fluorecence and # data points
-    %Careful with precision errors here...
-    ap_index = round(min([trace_struct.ap_vector]),2):.01:round(max([trace_struct.ap_vector]),2);
-    ap_index = round(ap_index,2);
-    ap_fluo_levels = zeros(length(cp_filenames),length(ap_index),length(track_times));
-    %%% make smoothing kernel
-    sigma = 1;
-    sz = 2;    % length of gaussFilter vector
-    x = linspace(-sz / 2, sz / 2, sz);
-    gaussFilter = exp(-x .^ 2 / (2 * sigma ^ 2));
-    gaussFilter = gaussFilter / sum (gaussFilter); % normalize
 
-    %Iterate through sets
-    for i = 1:length(cp_filenames)    
-        traces = trace_struct([trace_struct.setID]==i); %Filter for relevant traces
-        %For each time point in each trace, assign F(t) to AP(t)
-        for j = 1:length(traces)
-            ap_path = traces(j).ap_vector;
-            fluo = traces(j).fluo;
-            time = traces(j).time;
-            time_filter = time(~isnan(fluo));
-            fluo = fluo(~isnan(fluo));
-            for t = 1:length(track_times)            
-                start_time = track_times(t)*60-t_window;
-                stop_time = track_times(t)*60+t_window;
-                filter_vec = (time_filter >= start_time).*(time_filter < stop_time);        
-                fluo_trunc = fluo(1==filter_vec); 
-                ap_trunc = ap_path(1==filter_vec);
-                for k = 1:length(fluo_trunc)                 
-                    ap = round(ap_trunc(k),2);
-                    %Add fluroescence value to appropriate bin
-                    ap_filter = ap_index==ap;            
-                    %Make sure that time point is assigned to 1 and only 1 AP
-                    %position
-                    if sum(ap_filter) ~= 1
-                        error('Error in AP Index Assignment');
-                    end
-                    ap_fluo_levels(i,ap_filter,t) = ap_fluo_levels(i,ap_filter,t) + fluo_trunc(k);                           
-                end
-            end
-        end
-    end
+cluster_struct = struct;
+track_times = 10:10:50; % times at which to perform clustering
+start_time_prior = 20*60;
+stop_time_prior = 60*60;
+% record param values
+cluster_struct.track_times = track_times;
+stripe_prior_vec = NaN(1,7);
+%Create Arrays to store total fluorecence and # data points
+%Careful with precision errors here...
+ap_index = round(min([trace_struct.ap_vector]),2):.01:round(max([trace_struct.ap_vector]),2);
+ap_index = round(ap_index,2);
+ap_fluo_levels = zeros(length(cp_filenames),length(ap_index));
+%%% make smoothing kernel
+sigma = 1;
+sz = 2;    % length of gaussFilter vector
+x = linspace(-sz / 2, sz / 2, sz);
+gaussFilter = exp(-x .^ 2 / (2 * sigma ^ 2));
+gaussFilter = gaussFilter / sum (gaussFilter); % normalize
 
-    %%% Obtain Priors for stripe location using data distribution across sets
-    for t = 1:length(track_times)
-        agg_fluo = nanmean(ap_fluo_levels(:,:,t));
-        %%% first tp
-        agg_fluo_smooth = filter (gaussFilter,1, agg_fluo);
-        raw_stripe_fig = figure;
-        hold on
-        plot(ap_index,nanmean(ap_fluo_levels(:,:,t)),'.')    
-        y_lim = 1.1*max(nanmean(ap_fluo_levels(:,:,t)));
-        plot(ap_index,agg_fluo_smooth,'LineWidth',2)
-        grid on
-        title(['Aggregated Fluorescence by AP (' num2str(track_times(t)) ')'])
-        [s_ids, ~] = ginput;
-   
-        for j = 1:length(s_ids)        
-            plot([s_ids(j) s_ids(j)],[0 y_lim],'Color',stripe_colors(j,:),'LineWidth',1.5)
-        end
-        ylim([0 y_lim])    
-        stripe_prior_mat(t,1:length(s_ids)) = s_ids';
-        saveas(raw_stripe_fig, [ap_pos_path '/raw_stripes_t' num2str(track_times(t)) '.png'],'png')
-        close all
-    end
-    cluster_struct.stripe_prior_mat = stripe_prior_mat;
-    cluster_struct.set_index = set_index;
-    %% perform clustering
-    % make smoothing kernel
-    sigma = 10;
-    sz = 10;    % length of gaussFilter vector
-    x = linspace(-sz / 2, sz / 2, sz);
-    gaussFilter = exp(-x .^ 2 / (2 * sigma ^ 2));
-    gaussFilter = gaussFilter / sum (gaussFilter);
-    %%% store results
-    centroid_1D_mat = NaN(length(track_times),7,length(set_index));
-    anterior_1D_mat = NaN(length(track_times),7,length(set_index));
-    posterior_1D_mat = NaN(length(track_times),7,length(set_index));
-    f_unit_cell = cell(length(track_times),length(set_index));
-    edge_flag_mat = NaN(length(track_times),7,length(set_index));
-    s_ids = 1:7;    
-    max_iters = 1000; %Max iterations allowed    
-    ap_size = .001; %Set granularity for ap stripe plots   
-    set_titles = {}; %Store set titles
-    set_subtitles = {};
-    %indicates flank
-    new_stripe_centers = NaN(length(set_index),7);        
-    stripe_edge_flags = NaN(length(set_index),7);        
-    %Find stripe centers for each set
-    for s = 1:length(set_index)
-        set_fluo = [trace_struct(set_vec==set_index(s)).fluo];
-        set_ap = [trace_struct(set_vec==set_index(s)).ap_vector];
-        set_time = [trace_struct(set_vec==set_index(s)).time];
-        set_time = set_time(~isnan(set_fluo));
-        set_fluo = set_fluo(~isnan(set_fluo));
-        %set negatives to 0
-        set_fluo(set_fluo < 0) = 0;
-        %%% iterate through track times
-        for t = 1:length(track_times)
-            start_time = track_times(t)*60-t_window;
-            stop_time = track_times(t)*60+t_window;
-            t_filter = set_time>=start_time & set_time < stop_time;
-            set_ap_t = set_ap(t_filter);
-            set_fluo_t = set_fluo(t_filter);                 
-            %Break cumulative fluo up into units of 10000. Each such unit is one
-            %observation used for clustering (a way of coarse-grained, weighted
-            %clustering)
-            f_wt_vec = ceil(set_fluo_t/1e4);
-            f_max = max(f_wt_vec);
-            ap_wt_mat = repmat(set_ap_t,f_max,1);
-            f_wt_mat = repmat(f_wt_vec,f_max,1);
-            [~, ind_mat] = meshgrid(1:size(ap_wt_mat,2),1:size(ap_wt_mat,1));
-            ap_wt_mat(f_wt_mat<ind_mat) = 0;
-            f_unit_counts = reshape(ap_wt_mat,1,[]);
-            f_unit_counts = f_unit_counts(f_unit_counts>0); 
-            f_unit_cell{t,s} = f_unit_counts;
-            %Cluster Data
-            n_changes = 1;
-            iter = 0;
-            id_vec_old = zeros(1,length(f_unit_counts));                       
-            %Remove stripe center priors that are not present in set
-            new_stripe_centers = stripe_prior_mat(track_times==track_times(t),:);
-            p_edge =  max(f_unit_counts);
-            a_edge = min(f_unit_counts);
-            stripe_id_vec = find((new_stripe_centers >= a_edge)...
-                             &(new_stripe_centers <= p_edge));            
-            new_stripe_centers = new_stripe_centers(stripe_id_vec);                        
-            stripe_centers_orig = new_stripe_centers;            
-            n_stripes = length(new_stripe_centers);
-            %%% perform clustering
-            while n_changes > 0                
-                % find nearest center for each particle
-                [m ,id_vec] = min(abs(repmat(f_unit_counts,length(new_stripe_centers),1)-new_stripe_centers'));                
-                id_vec = stripe_id_vec(id_vec);            
-                % check how many assignments changed
-                n_changes = sum(id_vec~=id_vec_old);
-                %Re-calculate centers
-                stripe_centers_new = zeros(1,length(new_stripe_centers));
-                for i = 1:length(new_stripe_centers)
-                    mean_p = nanmean(f_unit_counts(ismember(id_vec,stripe_id_vec(i))));
-                    stripe_centers_new(i) = mean_p;
-                end                      
-                iter = iter + 1;
-                id_vec_old = id_vec;
-                new_stripe_centers = stripe_centers_new;    
-                if iter > max_iters
-                    warning('Maximum iterations exceeded');
-                    break
-                end                
-            end                            
-            centroid_1D_mat(track_times==track_times(t),stripe_id_vec,s) = new_stripe_centers;          
-            stripe_edge_flags = new_stripe_centers<a_edge+stripe_radius|...
-                                new_stripe_centers>p_edge-stripe_radius;
-            edge_flag_mat(track_times==track_times(t),stripe_id_vec,s) = stripe_edge_flags;
-%             centroid_1D_mat(track_times==track_times(t),stripe_edge_flags==1,s) = NaN; % remove edge cases
-            %%% make fig
-            fn = cp_filenames{s};
-            tt_s_end = strfind(fn,'\Comp') - 1;
-            tt_s_start = strfind(fn,'\2018') + 1;
-            st_s_end = length(fn) - 4;
-            t_string = fn(tt_s_start:tt_s_end);  
-            st_string = fn(tt_s_end + 2: st_s_end);
-            t_string = strrep(t_string,'_','-');
-            st_string = strrep(st_string,'_','-');
-            set_titles = [set_titles {t_string}];
-            set_subtitles = [set_subtitles {st_string}];
-            %Plot Stripes
-            stripe_fig = figure('Visible', 'off');
-            ap_vec = round(min(f_unit_counts),3):ap_size:round(max(f_unit_counts),3);
-            hold on
-            legend_string = {};
-            b = [];
-            for i = 1:n_stripes
-                %plot full background                 
-                hold on
-                anterior_1D_mat(t,stripe_id_vec(i),s) = min(f_unit_counts(id_vec==stripe_id_vec(i)));
-                posterior_1D_mat(t,stripe_id_vec(i),s) = max(f_unit_counts(id_vec==stripe_id_vec(i)));                
-                ap_vec_plot_full = histc(f_unit_counts(id_vec==stripe_id_vec(i)),ap_vec);
-                first_pt = find(ap_vec_plot_full,1);
-                last_pt = find(ap_vec_plot_full,1,'last');
-                ap_ct_plot = ap_vec(first_pt:last_pt);
-                ap_vec_plot_full = ap_vec_plot_full(first_pt:last_pt);
-                ap_vec_plot_full = conv(ap_vec_plot_full,gaussFilter,'same');
-                norm_factor = conv(ones(size(ap_vec_plot_full)),gaussFilter,'same');
-                ap_vec_plot_full = ap_vec_plot_full./norm_factor;
-                if stripe_edge_flags(i)==1
-                    b = [b bar(ap_ct_plot,ap_vec_plot_full,1,'FaceColor',...
-                        stripe_colors(stripe_id_vec(i),:),'FaceAlpha',.2,'EdgeAlpha',0)];     
-                else
-                    b = [b bar(ap_ct_plot,ap_vec_plot_full,1,'FaceColor',...
-                    stripe_colors(stripe_id_vec(i),:),'FaceAlpha',.8,'EdgeAlpha',0)];     
-                end
-                %overlay stripe centers
-                legend_string = [legend_string {['Stripe ' num2str(stripe_id_vec(i))]}];               
+%Iterate through sets
+for i = 1:length(cp_filenames)    
+    traces = trace_struct([trace_struct.setID]==i); %Filter for relevant traces
+    %For each time point in each trace, assign F(t) to AP(t)
+    for j = 1:length(traces)
+        ap_path = traces(j).ap_vector;
+        fluo = traces(j).fluo;
+        time = traces(j).time;
+        time_filter = time(~isnan(fluo));
+        fluo = fluo(~isnan(fluo));                    
+        filter_vec = (time_filter >= start_time_prior).*(time_filter < stop_time_prior);        
+        fluo_trunc = fluo(1==filter_vec); 
+        ap_trunc = ap_path(1==filter_vec);
+        for k = 1:length(fluo_trunc)                 
+            ap = round(ap_trunc(k),2);
+            %Add fluroescence value to appropriate bin
+            ap_filter = ap_index==ap;            
+            %Make sure that time point is assigned to 1 and only 1 AP
+            %position
+            if sum(ap_filter) ~= 1
+                error('Error in AP Index Assignment');
             end
-            grid on
-            legend(b,legend_string{:});
-            title(['Inferred Stripe Positions, ' t_string ' (Set ' num2str(s) ', Time ' num2str(track_times(t)) ')']);
-            xlabel('AP Position (%)');
-            ylabel('AU')                                 
-            saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) 'time_' num2str(track_times(t)) '.png'],'png')
-            saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) 'time_' num2str(track_times(t)) '.pdf'],'pdf')
-            saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) 'time_' num2str(track_times(t)) '.fig'],'fig')
-        end                     
+            ap_fluo_levels(i,ap_filter) = ap_fluo_levels(i,ap_filter) + fluo_trunc(k);                           
+        end       
     end
-    %%% record boundary estimates
-    cluster_struct.anterior_1D_rough = anterior_1D_mat;
-    cluster_struct.posterior_1D_rough = posterior_1D_mat;
-    cluster_struct.centroid_1D_rough = centroid_1D_mat;
-    %%
-    %%% Review Stripe Classifications Manually
-    final_anterior_mat = anterior_1D_mat;
-    final_posterior_mat = posterior_1D_mat;
-    final_centroid_mat = centroid_1D_mat;
-    final_edge_flag_mat = edge_flag_mat;
-    i = 1;
-    while i <= length(cp_filenames)    
-        t = 1;
-        while t <= length(track_times)
-            close all
-            f = openfig([cluster_path 'stripe_positions_set_' num2str(i) 'time_' num2str(track_times(t)) '.fig'],'visible');
-            hold on
-            [new_stripe_centers, ~] = ginput;        
-            %if no corrections, proceed. Else implement changes and re-display    
-            if ~isempty(new_stripe_centers)
-                new_stripe_id_vec = input('enter stripe IDs');
-                new_edge_flag_vec = input('flag edge cases');
-                new_anterior_vec = NaN(1,length(new_stripe_id_vec));
-                new_posterior_vec = NaN(1,length(new_stripe_id_vec));
-                if length(new_stripe_id_vec) ~= length(new_stripe_centers)
-                    warning('inconsistent id and center vector sizes. retry')
-                    continue                
-                end
-                f_unit_counts = f_unit_cell{t,i};                                    
-                %%% make plot
-                stripe_fig = figure;
-                [m ,id_vec] = min(abs(repmat(f_unit_counts,length(new_stripe_centers),1)-new_stripe_centers));              
-                stripe_vec_full = new_stripe_id_vec(id_vec);                
-                %set x axis
-                ap_vec = round(min(f_unit_counts),3):ap_size:round(max(f_unit_counts),3);
-                hold on        
-                legend_string = {};
-                iter = 1;
-                for k = new_stripe_id_vec
-                    legend_string = [legend_string {['Stripe ' num2str(k)]}];
-                    % record edges
-                    new_anterior_vec(new_stripe_id_vec==k) = min(f_unit_counts(stripe_vec_full==k));
-                    new_posterior_vec(new_stripe_id_vec==k) = max(f_unit_counts(stripe_vec_full==k));      
-                    ap_ct_plot = histc(f_unit_counts(stripe_vec_full==k),ap_vec);
-                    first_pt = find(ap_ct_plot,1);
-                    last_pt = find(ap_ct_plot,1,'last');
-                    ap_vec_plot = ap_vec(first_pt:last_pt);
-                    ap_ct_plot = ap_ct_plot(first_pt:last_pt);
-                    ap_ct_plot = conv(ap_ct_plot,gaussFilter,'same');
-                    norm_factor = conv(ones(size(ap_ct_plot)),gaussFilter,'same');
-                    ap_ct_plot = ap_ct_plot./norm_factor;
-                    if new_edge_flag_vec(iter)==1
-                        bar(ap_vec_plot,ap_ct_plot,1,'FaceColor',...
-                            stripe_colors(k,:),'FaceAlpha',.2,'EdgeAlpha',0);     
-                    else
-                        bar(ap_vec_plot,ap_ct_plot,1,'FaceColor',...
-                            stripe_colors(k,:),'FaceAlpha',.8,'EdgeAlpha',0);     
-                    end                
-                    iter = iter + 1;
-                end        
-                grid on
-                fn = cp_filenames{i};
-                tt_s_end = strfind(fn,'\Comp') - 1;
-                tt_s_start = strfind(fn,'\2017') + 1;
-                st_s_end = length(fn) - 4;
-                t_string = fn(tt_s_start:tt_s_end); 
-                legend(legend_string{:});
-                title(['Inferred Stripe Positions (Corrected), ' t_string ' (Set ' num2str(i) ' Time ' num2str(track_times(t)) ')']);
-                xlabel('AP Position (%)');
-                ylabel('AU')
-                [x2, ~] = ginput;
-                if isempty(x2)
-                    final_centroid_mat(t,new_stripe_id_vec,i) = new_stripe_centers;  
-                    final_anterior_mat(t,new_stripe_id_vec,i) = new_anterior_vec;  
-                    final_posterior_mat(t,new_stripe_id_vec,i) = new_posterior_vec;    
-                    final_edge_flag_mat(t,new_stripe_id_vec,i) = new_edge_flag_vec;
-                    saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(i) 'time_' num2str(track_times(t)) '_corrected.png'],'pdf')
-                    saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(i) 'time_' num2str(track_times(t)) '_corrected.pdf'],'pdf')
-                    saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(i) 'time_' num2str(track_times(t)) '_corrected.fig'],'fig')                          
-                    t = t + 1;
-                end         
-            else                    
-                t = t + 1;
-            end   
-        end
-        i = i + 1;
-    end
-    cluster_struct.final_centroid_mat = final_centroid_mat;
-    cluster_struct.final_anterior_mat = final_anterior_mat;
-    cluster_struct.final_posterior_mat = final_posterior_mat;
-    cluster_struct.final_edge_flag_mat = final_edge_flag_mat;    
-    save([data_path 'stripe_clustering_results.mat'],'cluster_struct')
 end
+
+%%% Obtain Priors for stripe location using data distribution across sets
+agg_fluo = nanmean(ap_fluo_levels);
+%%% first tp
+agg_fluo_smooth = filter (gaussFilter,1, agg_fluo);
+raw_stripe_fig = figure;
+hold on
+plot(ap_index,nanmean(ap_fluo_levels),'.')    
+y_lim = 1.1*max(nanmean(ap_fluo_levels));
+plot(ap_index,agg_fluo_smooth,'LineWidth',2)
+grid on
+title('Aggregated Fluorescence by AP')
+[s_ids, ~] = ginput;
+
+for j = 1:length(s_ids)        
+    plot([s_ids(j) s_ids(j)],[0 y_lim],'Color',stripe_colors(j,:),'LineWidth',1.5)
+end
+ylim([0 y_lim])    
+stripe_prior_vec(1:length(s_ids)) = s_ids';
+saveas(raw_stripe_fig, [ap_pos_path '/raw_stripes.png'],'png')
+close all
+
+cluster_struct.stripe_prior_vec = stripe_prior_vec;
+cluster_struct.set_index = set_index;
+%% perform clustering
+% make smoothing kernel
+sigma = 10;
+sz = 10;    % length of gaussFilter vector
+x = linspace(-sz / 2, sz / 2, sz);
+gaussFilter = exp(-x .^ 2 / (2 * sigma ^ 2));
+gaussFilter = gaussFilter / sum (gaussFilter);
+%%% store results
+centroid_1D_mat = NaN(length(track_times),7,length(set_index));
+anterior_1D_mat = NaN(length(track_times),7,length(set_index));
+posterior_1D_mat = NaN(length(track_times),7,length(set_index));
+f_unit_cell = cell(length(track_times),length(set_index));
+edge_flag_mat = NaN(length(track_times),7,length(set_index));
+s_ids = 1:7;    
+max_iters = 1000; %Max iterations allowed    
+ap_size = .001; %Set granularity for ap stripe plots   
+set_titles = {}; %Store set titles
+set_subtitles = {};
+%indicates flank
+new_stripe_centers = NaN(length(set_index),7);        
+stripe_edge_flags = NaN(length(set_index),7);        
+%Find stripe centers for each set
+for s = 1:length(set_index)
+    set_fluo = [trace_struct(set_vec==set_index(s)).fluo];
+    set_ap = [trace_struct(set_vec==set_index(s)).ap_vector];
+    set_time = [trace_struct(set_vec==set_index(s)).time];
+    set_time = set_time(~isnan(set_fluo));
+    set_fluo = set_fluo(~isnan(set_fluo));
+    %set negatives to 0
+    set_fluo(set_fluo < 0) = 0;
+    %%% iterate through track times
+    for t = 1:length(track_times)
+        start_time_prior = track_times(t)*60-t_window;
+        stop_time_prior = track_times(t)*60+t_window;
+        t_filter = set_time>=start_time_prior & set_time < stop_time_prior;
+        set_ap_t = set_ap(t_filter);
+        set_fluo_t = set_fluo(t_filter);                 
+        %Break cumulative fluo up into units of 10000. Each such unit is one
+        %observation used for clustering (a way of coarse-grained, weighted
+        %clustering)
+        f_wt_vec = ceil(set_fluo_t/1e4);
+        f_max = max(f_wt_vec);
+        ap_wt_mat = repmat(set_ap_t,f_max,1);
+        f_wt_mat = repmat(f_wt_vec,f_max,1);
+        [~, ind_mat] = meshgrid(1:size(ap_wt_mat,2),1:size(ap_wt_mat,1));
+        ap_wt_mat(f_wt_mat<ind_mat) = 0;
+        f_unit_counts = reshape(ap_wt_mat,1,[]);
+        f_unit_counts = f_unit_counts(f_unit_counts>0); 
+        f_unit_cell{t,s} = f_unit_counts;
+        %Cluster Data
+        n_changes = 1;
+        iter = 0;
+        id_vec_old = zeros(1,length(f_unit_counts));                       
+        %Remove stripe center priors that are not present in set
+        new_stripe_centers = stripe_prior_vec;
+        p_edge =  max(f_unit_counts);
+        a_edge = min(f_unit_counts);
+        stripe_id_vec = find((new_stripe_centers >= a_edge)...
+                         &(new_stripe_centers <= p_edge));            
+        new_stripe_centers = new_stripe_centers(stripe_id_vec);                        
+        stripe_centers_orig = new_stripe_centers;            
+        n_stripes = length(new_stripe_centers);
+        %%% perform clustering
+        while n_changes > 0                
+            % find nearest center for each particle
+            [~ ,id_vec] = min(abs(repmat(f_unit_counts,length(new_stripe_centers),1)-new_stripe_centers'));                
+            id_vec = stripe_id_vec(id_vec);            
+            % check how many assignments changed
+            n_changes = sum(id_vec~=id_vec_old);
+            %Re-calculate centers
+            stripe_centers_new = zeros(1,length(new_stripe_centers));
+            for i = 1:length(new_stripe_centers)
+                mean_p = nanmean(f_unit_counts(ismember(id_vec,stripe_id_vec(i))));
+                stripe_centers_new(i) = mean_p;
+            end                      
+            iter = iter + 1;
+            id_vec_old = id_vec;
+            new_stripe_centers = stripe_centers_new;    
+            if iter > max_iters
+                warning('Maximum iterations exceeded');
+                break
+            end                
+        end                            
+        centroid_1D_mat(track_times==track_times(t),stripe_id_vec,s) = new_stripe_centers;          
+        stripe_edge_flags = new_stripe_centers<a_edge+stripe_radius|...
+                            new_stripe_centers>p_edge-stripe_radius;
+        edge_flag_mat(track_times==track_times(t),stripe_id_vec,s) = stripe_edge_flags;
+%             centroid_1D_mat(track_times==track_times(t),stripe_edge_flags==1,s) = NaN; % remove edge cases
+        %%% make fig
+        fn = cp_filenames{s};
+        tt_s_end = strfind(fn,'\Comp') - 1;
+        tt_s_start = strfind(fn,'\2018') + 1;
+        st_s_end = length(fn) - 4;
+        t_string = fn(tt_s_start:tt_s_end);  
+        st_string = fn(tt_s_end + 2: st_s_end);
+        t_string = strrep(t_string,'_','-');
+        st_string = strrep(st_string,'_','-');
+        set_titles = [set_titles {t_string}];
+        set_subtitles = [set_subtitles {st_string}];
+        %Plot Stripes
+        stripe_fig = figure('Visible', 'off');
+        ap_vec = round(min(f_unit_counts),3):ap_size:round(max(f_unit_counts),3);
+        hold on
+        legend_string = {};
+        b = [];
+        for i = 1:n_stripes
+            %plot full background                 
+            hold on
+            anterior_1D_mat(t,stripe_id_vec(i),s) = min(f_unit_counts(id_vec==stripe_id_vec(i)));
+            posterior_1D_mat(t,stripe_id_vec(i),s) = max(f_unit_counts(id_vec==stripe_id_vec(i)));                
+            ap_vec_plot_full = histc(f_unit_counts(id_vec==stripe_id_vec(i)),ap_vec);
+            first_pt = find(ap_vec_plot_full,1);
+            last_pt = find(ap_vec_plot_full,1,'last');
+            ap_ct_plot = ap_vec(first_pt:last_pt);
+            ap_vec_plot_full = ap_vec_plot_full(first_pt:last_pt);
+            ap_vec_plot_full = conv(ap_vec_plot_full,gaussFilter,'same');
+            norm_factor = conv(ones(size(ap_vec_plot_full)),gaussFilter,'same');
+            ap_vec_plot_full = ap_vec_plot_full./norm_factor;
+            if stripe_edge_flags(i)==1
+                b = [b bar(ap_ct_plot,ap_vec_plot_full,1,'FaceColor',...
+                    stripe_colors(stripe_id_vec(i),:),'FaceAlpha',.2,'EdgeAlpha',0)];     
+            else
+                b = [b bar(ap_ct_plot,ap_vec_plot_full,1,'FaceColor',...
+                stripe_colors(stripe_id_vec(i),:),'FaceAlpha',.8,'EdgeAlpha',0)];     
+            end
+            %overlay stripe centers
+            legend_string = [legend_string {['Stripe ' num2str(stripe_id_vec(i))]}];               
+        end
+        grid on
+        legend(b,legend_string{:});
+        title(['Inferred Stripe Positions, ' t_string ' (Set ' num2str(s) ', Time ' num2str(track_times(t)) ')']);
+        xlabel('AP Position (%)');
+        ylabel('AU')                                 
+        saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) 'time_' num2str(track_times(t)) '.png'],'png')
+        saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) 'time_' num2str(track_times(t)) '.pdf'],'pdf')
+        saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(s) 'time_' num2str(track_times(t)) '.fig'],'fig')        
+    end                     
+end
+%%% record boundary estimates
+cluster_struct.anterior_1D_rough = anterior_1D_mat;
+cluster_struct.posterior_1D_rough = posterior_1D_mat;
+cluster_struct.centroid_1D_rough = centroid_1D_mat;
+%%
+%%% Review Stripe Classifications Manually
+final_anterior_mat = anterior_1D_mat;
+final_posterior_mat = posterior_1D_mat;
+final_centroid_mat = centroid_1D_mat;
+final_edge_flag_mat = edge_flag_mat;
+i = 1;
+while i <= length(cp_filenames)    
+    t = 1;
+    while t <= length(track_times)
+        close all
+        f = openfig([cluster_path 'stripe_positions_set_' num2str(i) 'time_' num2str(track_times(t)) '.fig'],'visible');
+        hold on
+        [new_stripe_centers, ~] = ginput; % use GUI interface to set new stripe centers
+                                          % only if needed
+        %if no corrections, proceed. Else implement changes and re-display    
+        if ~isempty(new_stripe_centers)
+            new_stripe_id_vec = input('enter stripe IDs');
+            new_edge_flag_vec = input('flag edge cases');
+            new_anterior_vec = NaN(1,length(new_stripe_id_vec));
+            new_posterior_vec = NaN(1,length(new_stripe_id_vec));
+            if length(new_stripe_id_vec) ~= length(new_stripe_centers) || ...
+                length(new_stripe_id_vec) ~= length(new_edge_flag_vec)
+                warning('inconsistent id and center vector sizes. retry')
+                continue                
+            end
+            f_unit_counts = f_unit_cell{t,i};                                    
+            %%% make plot
+            stripe_fig = figure;
+            % find new assignments
+            [m ,id_vec] = min(abs(repmat(f_unit_counts,length(new_stripe_centers),1)-new_stripe_centers));              
+            stripe_vec_full = new_stripe_id_vec(id_vec);                
+            %set x axis
+            ap_vec = round(min(f_unit_counts),3):ap_size:round(max(f_unit_counts),3);
+            hold on        
+            legend_string = {};
+            iter = 1;
+            for k = new_stripe_id_vec
+                legend_string = [legend_string {['Stripe ' num2str(k)]}];
+                % record edges
+                new_anterior_vec(new_stripe_id_vec==k) = min(f_unit_counts(stripe_vec_full==k));
+                new_posterior_vec(new_stripe_id_vec==k) = max(f_unit_counts(stripe_vec_full==k));      
+                ap_ct_plot = histc(f_unit_counts(stripe_vec_full==k),ap_vec);
+                first_pt = find(ap_ct_plot,1);
+                last_pt = find(ap_ct_plot,1,'last');
+                ap_vec_plot = ap_vec(first_pt:last_pt);
+                ap_ct_plot = ap_ct_plot(first_pt:last_pt);
+                ap_ct_plot = conv(ap_ct_plot,gaussFilter,'same');
+                norm_factor = conv(ones(size(ap_ct_plot)),gaussFilter,'same');
+                ap_ct_plot = ap_ct_plot./norm_factor;
+                if new_edge_flag_vec(iter)==1
+                    bar(ap_vec_plot,ap_ct_plot,1,'FaceColor',...
+                        stripe_colors(k,:),'FaceAlpha',.2,'EdgeAlpha',0);     
+                else
+                    bar(ap_vec_plot,ap_ct_plot,1,'FaceColor',...
+                        stripe_colors(k,:),'FaceAlpha',.8,'EdgeAlpha',0);     
+                end                
+                iter = iter + 1;
+            end        
+            grid on
+            fn = cp_filenames{i};
+            tt_s_end = strfind(fn,'\Comp') - 1;
+            tt_s_start = strfind(fn,'\2017') + 1;
+            st_s_end = length(fn) - 4;
+            t_string = fn(tt_s_start:tt_s_end); 
+            legend(legend_string{:});
+            title(['Inferred Stripe Positions (Corrected), ' t_string ' (Set ' num2str(i) ' Time ' num2str(track_times(t)) ')']);
+            xlabel('AP Position (%)');
+            ylabel('AU')
+            [x2, ~] = ginput;
+            if isempty(x2)
+                final_centroid_mat(t,new_stripe_id_vec,i) = new_stripe_centers;  
+                final_anterior_mat(t,new_stripe_id_vec,i) = new_anterior_vec;  
+                final_posterior_mat(t,new_stripe_id_vec,i) = new_posterior_vec;    
+                final_edge_flag_mat(t,new_stripe_id_vec,i) = new_edge_flag_vec;
+                saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(i) 'time_' num2str(track_times(t)) '_corrected.png'],'png')
+                saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(i) 'time_' num2str(track_times(t)) '_corrected.pdf'],'pdf')
+                saveas(stripe_fig, [cluster_path 'stripe_positions_set_' num2str(i) 'time_' num2str(track_times(t)) '_corrected.fig'],'fig')                          
+                t = t + 1;
+            end         
+        else                    
+            t = t + 1;
+        end   
+    end
+    i = i + 1;
+end
+cluster_struct.final_centroid_mat = final_centroid_mat;
+cluster_struct.final_anterior_mat = final_anterior_mat;
+cluster_struct.final_posterior_mat = final_posterior_mat;
+cluster_struct.final_edge_flag_mat = final_edge_flag_mat;    
+save([data_path 'stripe_clustering_results.mat'],'cluster_struct')

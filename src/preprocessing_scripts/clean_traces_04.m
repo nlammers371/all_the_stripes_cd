@@ -11,7 +11,7 @@ xDim = 1024;
 yDim = 256;
 %------------------------Import Raw Trace Set------------------------%
 %ID's of sets to includeg
-project = 'eve7stripes_inf_2018_04_20';
+project = 'eve7stripes_inf_2018_04_28';
 print_traces = 0; %Output PNG files for traces?
 
 %---------------------------Set Paths-------------------------------------%
@@ -231,7 +231,7 @@ end
 stripe_positions_ap = nanmean(stripe_pos_mat); %cross-set mean
 %%% calculate mapping transformation for each set
 ap_raw_vec = [nucleus_struct_final.ap_vector_interp];
-yp_vec = [nucleus_struct_final.yPos_interp];
+yp_vec = round([nucleus_struct_final.yPos_interp]);
 set_vec = [nucleus_struct_final.setID_long];
 nucleus_vec = [nucleus_struct_final.ncID_long];
 ap_new_vec = NaN(1,length(ap_raw_vec));
@@ -269,6 +269,8 @@ for i = 1:length(set_index)
                 ap_raw_vec(ap_raw_vec>ap_orig_vec(end)&set_y_filter)-ap_orig_centers(end)) + offsets(end);        
     end
 end
+
+
 % now assign new ap positions
 nc_vec = [nucleus_struct_final.ncID];
 nc_index = unique(nc_vec);
