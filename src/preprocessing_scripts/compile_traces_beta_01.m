@@ -59,13 +59,8 @@ for i = 1:length(cp_filenames) % Loop through filenames
     load([FolderPath ap_filenames{i}]) % AP Info   
     load([FolderPath nc_filenames{i}]) % Ellipse Info    
     raw_data = load([FolderPath cp_filenames{i}]); % Particles    
-    SetID = i;    
-    % get angle between the x-axis and the AP-axis 
-    APAngle = round(atan((coordPZoom(2)-coordAZoom(2))/(coordPZoom(1)-coordAZoom(1)))*360 / (2*pi));    
-    %Correction for if APAngle is in quadrants II or III
-    if coordPZoom(1)-coordAZoom(1) < 0       
-        APAngle = APAngle + 180;
-    end    
+    SetID = i;        
+   
     %%% pull trace and nuclei variables
     time_raw = raw_data.ElapsedTime*60; % time vector            
     traces_raw = raw_data.AllTracesVector; % Array with a column for each trace    

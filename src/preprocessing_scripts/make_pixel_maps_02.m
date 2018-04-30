@@ -34,7 +34,8 @@ for i = 1:length(set_index)
     all_ap = [trace_struct([trace_struct.setID]==i).ap_vector];
     all_x = [trace_struct([trace_struct.setID]==i).xPos];
     x_min = all_x(all_ap==min(all_ap));
-    x_max = all_x(all_ap==max(all_ap));
+    x_max = all_x(all_ap==max(all_ap));    
+    
     flip_flag = 0;
     if x_min>x_max % deal with inversions
         flip_flag = 1;

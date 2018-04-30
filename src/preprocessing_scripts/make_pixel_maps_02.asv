@@ -35,6 +35,23 @@ for i = 1:length(set_index)
     all_x = [trace_struct([trace_struct.setID]==i).xPos];
     x_min = all_x(all_ap==min(all_ap));
     x_max = all_x(all_ap==max(all_ap));
+    
+    APLength=sqrt((coordPZoom(2)-coordAZoom(2))^2+(coordPZoom(1)-coordAZoom(1))^2);
+    
+    
+    APPosImage=zeros(size(ZoomImage));
+    [Rows,Columns]=size(ZoomImage);
+    
+    for i=1:Rows
+        for j=1:Columns
+            Angle=atan2((i-coordAZoom(2)),(j-coordAZoom(1)));
+            
+            Distance=sqrt((coordAZoom(2)-i).^2+(coordAZoom(1)-j).^2);
+            APPosition=Distance.*cos(Angle-APAngle);
+            APPosImage(i,j)=APPosition/APLength;
+        end
+    end
+    
     flip_flag = 0;
     if x_min>x_max % deal with inversions
         flip_flag = 1;
@@ -68,6 +85,9 @@ for i = 1:length(set_index)
     c_mat_ap = cluster_struct.final_centroid_mat(:,:,i);
     
     edge_flags = cluster_struct.final_edge_flag_mat(:,:,i);
+    if i == 10
+        edge_flags(:,4) = 1; % spot fix for set 11
+    end
     % remove edge cases
     a_mat_pix(edge_flags==1) = NaN;
     p_mat_pix(edge_flags==1) = NaN;
@@ -111,7 +131,7 @@ for i = 1:length(set_index)
     fov_stripe_partitions(i).stripe_centroids_ap = set_centroids_ap;
     fov_stripe_partitions(i).ap_ref_mat = ap_mat;
     fov_stripe_partitions(i).t_track = track_times;
-    fov_stripe_partitions(i).edge_flag_mat = cluster_struct.final_edge_flag_mat(:,:,i);
+    fov_stripe_partitions(i).edge_flag_mat = edge_flags;
 end
 save([data_path 'fov_partitions.mat'],'fov_stripe_partitions')
 save(nucleus_name, 'schnitz_struct');
