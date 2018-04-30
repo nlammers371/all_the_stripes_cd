@@ -31,6 +31,7 @@ for i = 1:length(set_index)
     set_stripe_map = NaN(yDim,xDim,length(plot_times));
     set_centroids_pix = NaN(length(plot_times),7);
     set_centroids_ap = NaN(length(plot_times),7);
+<<<<<<< HEAD
 %     all_ap = [trace_struct([trace_struct.setID]==i).ap_vector];
 %     all_x = [trace_struct([trace_struct.setID]==i).xPos];
 %     x_min = all_x(all_ap==min(all_ap));
@@ -43,6 +44,21 @@ for i = 1:length(set_index)
 %     all_y = [trace_struct([trace_struct.setID]==i).yPos];
 %     beta = regress(all_ap',[ones(size(all_x))' all_x' all_y']);
 %     %%% make ap-to-pixel map
+=======
+    all_ap = [trace_struct([trace_struct.setID]==i).ap_vector];
+    all_x = [trace_struct([trace_struct.setID]==i).xPos];
+    x_min = all_x(all_ap==min(all_ap));
+    x_max = all_x(all_ap==max(all_ap));    
+    
+    flip_flag = 0;
+    if x_min>x_max % deal with inversions
+        flip_flag = 1;
+        all_x = xDim - all_x + 1;
+    end
+    all_y = [trace_struct([trace_struct.setID]==i).yPos];
+    beta = regress(all_ap',[ones(size(all_x))' all_x' all_y']);
+    %%% make ap-to-pixel map
+>>>>>>> fdf9b77aecc0c4ed847d837a3ce66946992e37e4
     [x_ref, y_ref] = meshgrid(1:xDim,1:yDim);
 %     ap_mat = beta(1) + beta(2)*x_ref + beta(3)*y_ref;
     APAngle = trace_struct(1).APAngle;

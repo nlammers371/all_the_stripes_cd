@@ -21,7 +21,7 @@ t_start_stripe = 25;
 % id variables
 datatype = 'weka';
 inference_type = 'dp';
-project = 'eve7stripes_inf_2018_04_20'; %project identifier
+project = 'eve7stripes_inf_2018_04_28'; %project identifier
 
 %Generate filenames and writepath
 id_thing = [ '/w' num2str(w) '_t' num2str(Tres)...
@@ -176,19 +176,27 @@ set(gca,'ytick',0:5:50,'yticklabels',0:5:50)
 title('fraction active viterbi states over time')
 colorbar
 saveas(v_state_fig,[DataPath '\viterbi_stripe_tracking_check.png'],'png')
-
+%%
 ap_register_fig = figure;
-colormap(jet(128))
-stripe_bin_vec = longform_data(:,8)==round(longform_data(:,8));
+cm = jet(128);
+colormap(cm)
+% colormap([cm(20,:);cm(40,:)])
+stripe_bin_vec = longform_data(:,8)==4;%round(longform_data(:,8));
 ap_registered = longform_data(:,5);
 ap_raw = longform_data(:,4);
 time_vec = longform_data(:,10);
 
 hold on
 % scatter(ap_raw,time_vec,40,stripeedit csvwrite_with_headers_bin_vec)
-s = scatter(ap_registered,time_vec,40,stripe_bin_vec,'filled');
-s.MarkerFaceAlpha = .1;
-s.MarkerEdgeAlpha = 0;
+for i = 1:7
+   s = scatter(ap_registered(longform_data(:,8)==i),time_vec(longform_data(:,8)==i),40,'MarkerfaceColor',cm(15*i,:));
+   s.MarkerFaceAlpha = .05;
+   s.MarkerEdgeAlpha = 0;
+end
+saveas(ap_register_fig,[DataPath '\registered_ap_check.png'],'png')
+% % s = scatter(ap_raw,time_vec,40,stripe_bin_vec,'filled');
+% s.MarkerFaceAlpha = .1;
+% s.MarkerEdgeAlpha = 0;
 %% Save Data
 csvwrite_with_headers([DataPath '\eve_data_longform_w_nuclei.csv'], ...
                        longform_data, header,9); 

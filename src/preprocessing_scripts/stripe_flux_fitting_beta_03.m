@@ -23,7 +23,7 @@ load(fov_name); % ap and stripe info at pixel level
 load(nucleus_read_name);
 load(cluster_name);
 
-save_spline_figs = 1; % if 1 generates spline figs
+save_spline_figs = 0; % if 1 generates spline figs
 %% generate fluorescence maps 
 %%%%%%%%%%%%%%%%%%% Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Color Info
@@ -70,7 +70,7 @@ set_index = unique(set_vec_particle); % indexing vector
 stripe_class_vec = NaN(1,length(trace_struct));
 stripe_pos_struct = struct; % save stripe location arrays
 %%% perform stripe classifications
-for i = 1:length(set_index)
+for i = 2%1:length(set_index)
     xp_set_vec = xPos_vec_particle(set_vec_particle==set_index(i));
     yp_set_vec = yPos_vec_particle(set_vec_particle==set_index(i));
     ap_set_vec = ap_vec_particle(set_vec_particle==set_index(i));
@@ -244,7 +244,7 @@ for i = 1:length(set_index)
                                     stripe_id_vec_all(j) + 1/3;                            
                 end
             end
-        end
+        end   
     end  
     stripe_id_mat_show = stripe_id_mat_full;
     stripe_id_mat_show(isnan(stripe_id_mat_show)) = 0;
