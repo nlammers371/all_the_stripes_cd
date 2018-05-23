@@ -2,12 +2,12 @@
 close all
 clear 
 % addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
-savio = 1; % Specify whether inference is being conducted on Savio Cluster
+savio = 0; % Specify whether inference is being conducted on Savio Cluster
 ap_ref_index = 1:7;
 ap_ref_index = reshape([ap_ref_index-1/3 ;ap_ref_index; ap_ref_index + 1/3],1,[]);
 
 if savio
-    addpath('..\..\..\hmmm\src\utilities\');
+    addpath('/global/home/users/nlammers/repos/hmmm/src/utilities/');
     %Get environment variable from job script
     savio_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};    
     bin_groups = cell(1,length(savio_groups));
@@ -226,7 +226,7 @@ for g = 1:length(bin_groups) % loop through different AP groups
             if isempty(inference_set)
                 skip_flag = 1;
             else
-                set_size = length([inference_set.time_inf]);
+                set_size = length([inference_set.time_inf]);                
                 if set_size < min_dp_per_inf
                     skip_flag = 1;
                 else
@@ -257,7 +257,7 @@ for g = 1:length(bin_groups) % loop through different AP groups
                     sample_particles = [inference_set(sample_ids).ParticleID];
                     for tr = 1:length(sample_ids)
                         fluo_data{tr} = inference_set(sample_ids(tr)).fluo_inf;                    
-                    end            
+                    end                                
                 else % Take all relevant traces if not bootstrapping
                     error('non-bootstrap option is deprecated')
 %                     fluo_data = cell([length(trace_ind), 1]);            
