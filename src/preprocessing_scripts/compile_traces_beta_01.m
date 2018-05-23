@@ -36,10 +36,6 @@ for d = 1 : length(dirinfo)
     if isempty(strfind(thisdir,keyword)) 
         continue
     end    
-%     set_num_start_ind = strfind(thisdir,'_');
-%     set_num_start_ind = set_num_start_ind(end);
-%     set_num = str2num(thisdir(set_num_start_ind+1:end));        
-%     set_nums = [set_nums set_num];
     % append file paths
     cp_name = dir([FolderPath '/' thisdir '/CompiledParticles*']);
     cp_name = cp_name(1).name;
@@ -59,8 +55,24 @@ for i = 1:length(cp_filenames) % Loop through filenames
     load([FolderPath ap_filenames{i}]) % AP Info   
     load([FolderPath nc_filenames{i}]) % Ellipse Info    
     raw_data = load([FolderPath cp_filenames{i}]); % Particles    
+<<<<<<< HEAD
+    SetID = i;    
+   %Angle between the x-axis and the AP-axis
+    APAngle=atan2((coordPZoom(2)-coordAZoom(2)),(coordPZoom(1)-coordAZoom(1)));        
+    APLength=sqrt((coordPZoom(2)-coordAZoom(2))^2+(coordPZoom(1)-coordAZoom(1))^2);            
+    APPosImage=zeros(yDim,xDim);        
+    for k=1:yDim
+        for j=1:xDim
+            Angle=atan2((k-coordAZoom(2)),(j-coordAZoom(1)));            
+            Distance=sqrt((coordAZoom(2)-k).^2+(coordAZoom(1)-j).^2);
+            APPosition=Distance.*cos(Angle-APAngle);
+            APPosImage(k,j)=APPosition/APLength;
+        end
+    end 
+=======
     SetID = i;        
    
+>>>>>>> fdf9b77aecc0c4ed847d837a3ce66946992e37e4
     %%% pull trace and nuclei variables
     time_raw = raw_data.ElapsedTime*60; % time vector            
     traces_raw = raw_data.AllTracesVector; % Array with a column for each trace    
@@ -80,14 +92,20 @@ for i = 1:length(cp_filenames) % Loop through filenames
         nuc_frames = e_frames(ismember(e_frames,frames_clean));
         if length(nuc_frames) > 2% skip nuclei not in nc14
             x = schnitzcells(e).cenx;
-            x = x(ismember(nuc_frames,frames_clean));
+            x = round(x(ismember(nuc_frames,frames_clean)));
             y = schnitzcells(e).ceny;
-            y = y(ismember(nuc_frames,frames_clean));            
+            y = round(y(ismember(nuc_frames,frames_clean))); 
+            ap_vector = [];
+            for n = 1:length(x)
+                ap_vector = [ap_vector APPosImage(y(n),x(n))];
+            end
+            s_cells(e_pass).ap_vector = ap_vector;            
             s_cells(e_pass).xPos = x;
             s_cells(e_pass).yPos = y; 
             s_cells(e_pass).set_vector = repelem(SetID,length(x)); 
-            s_cells(e_pass).APAngle = APAngle;
-            % used to assess eligibility for on/off time analyses
+            s_cells(e_pass).APAngle = APAngle; 
+            s_cells(e_pass).APLength = APLength;
+            s_cells(e_pass).coordAZoom = coordAZoom;
             %Will be set to particle position for nuclei with matching
             %particle
             s_cells(e_pass).xPosParticle = NaN;
@@ -122,9 +140,7 @@ for i = 1:length(cp_filenames) % Loop through filenames
         if length(raw_trace(~isnan(raw_trace))) < 3            
             continue
         end
-%         elseif length(raw_trace(~isnan(raw_trace))) < 5            
-%             short_flag = 1;
-%         end
+
         j_pass = j_pass + 1;
         % Generate full length time and frame vectors     
         time_full = time_clean(trace_start:trace_stop);                
@@ -150,7 +166,9 @@ for i = 1:length(cp_filenames) % Loop through filenames
         trace_struct(j_pass).all_frames = frames_full;
         trace_struct(j_pass).nc14 = first_frame;
         trace_struct(j_pass).last_frame = last_frame;        
-        trace_struct(j_pass).APAngle = APAngle;
+        trace_struct(j_pass).APAngle = APAngle;    
+        trace_struct(j_pass).APLength = APLength;
+        trace_struct(j_pass).coordAZoom = coordAZoom;        
         trace_struct(j_pass).xPos = xPos;
         trace_struct(j_pass).yPos = yPos;
         trace_struct(j_pass).ap_vector = ap_positions;

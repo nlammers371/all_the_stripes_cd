@@ -31,6 +31,20 @@ for i = 1:length(set_index)
     set_stripe_map = NaN(yDim,xDim,length(plot_times));
     set_centroids_pix = NaN(length(plot_times),7);
     set_centroids_ap = NaN(length(plot_times),7);
+<<<<<<< HEAD
+%     all_ap = [trace_struct([trace_struct.setID]==i).ap_vector];
+%     all_x = [trace_struct([trace_struct.setID]==i).xPos];
+%     x_min = all_x(all_ap==min(all_ap));
+%     x_max = all_x(all_ap==max(all_ap));
+%     flip_flag = 0;
+%     if x_min>x_max % deal with inversions
+%         flip_flag = 1;
+%         all_x = xDim - all_x + 1;
+%     end
+%     all_y = [trace_struct([trace_struct.setID]==i).yPos];
+%     beta = regress(all_ap',[ones(size(all_x))' all_x' all_y']);
+%     %%% make ap-to-pixel map
+=======
     all_ap = [trace_struct([trace_struct.setID]==i).ap_vector];
     all_x = [trace_struct([trace_struct.setID]==i).xPos];
     x_min = all_x(all_ap==min(all_ap));
@@ -44,28 +58,29 @@ for i = 1:length(set_index)
     all_y = [trace_struct([trace_struct.setID]==i).yPos];
     beta = regress(all_ap',[ones(size(all_x))' all_x' all_y']);
     %%% make ap-to-pixel map
+>>>>>>> fdf9b77aecc0c4ed847d837a3ce66946992e37e4
     [x_ref, y_ref] = meshgrid(1:xDim,1:yDim);
-    ap_mat = beta(1) + beta(2)*x_ref + beta(3)*y_ref;
-    
-    %%% assign ap vectors to nuclei
-    nc_set_ind = find(nc_set_vec==set_index(i));
-    for j = nc_set_ind
-        if flip_flag
-            nc_x = xDim - schnitz_struct(j).xPos  + 1;
-        else
-            nc_x = schnitz_struct(j).xPos;
+%     ap_mat = beta(1) + beta(2)*x_ref + beta(3)*y_ref;
+    APAngle = trace_struct(1).APAngle;
+    APLength = trace_struct(1).APLength;
+    coordAZoom = trace_struct(1).coordAZoom;
+        
+    Angle=atan2((y_ref-coordAZoom(2)),(x_ref-coordAZoom(1)));            
+    Distance=sqrt((coordAZoom(2)-y_ref).^2+(coordAZoom(1)-x_ref).^2);
+    APPosition=Distance.*cos(Angle-APAngle);
+    APPosImage=APPosition/APLength;    
+    ap_x_projection = mean(APPosImage);
+%     ap_x_factor = ((100^2*(beta(2)^2 + beta(3)^2))).^-.5;    
+    a_mat_pix = NaN(size(cluster_struct.final_anterior_mat(:,:,i)));
+    p_mat_pix = NaN(size(cluster_struct.final_anterior_mat(:,:,i)));
+    c_mat_pix = NaN(size(cluster_struct.final_anterior_mat(:,:,i)));
+    for j = 1:size(a_mat_pix,1)
+        for k = 1:size(a_mat_pix,2)
+            [~, a_mat_pix(j,k)] = min(abs(ap_x_projection-cluster_struct.final_anterior_mat(j,k,i)));            
+            [~, p_mat_pix(j,k)] = min(abs(ap_x_projection-cluster_struct.final_posterior_mat(j,k,i)));            
+            [~, c_mat_pix(j,k)] = min(abs(ap_x_projection-cluster_struct.final_centroid_mat(j,k,i)));            
         end
-        nc_ap_vec = beta(1) + beta(2)*nc_x+ beta(3)*schnitz_struct(j).yPos;
-        schnitz_struct(j).ap_vector = nc_ap_vec;
-    end
-    ap_x_factor = ((100^2*(beta(2)^2 + beta(3)^2))).^-.5;    
-    a_mat_pix = (beta(2).^-1)*(cluster_struct.final_anterior_mat(:,:,i)-beta(1) - beta(3)*128);
-    p_mat_pix = (beta(2).^-1)*(cluster_struct.final_posterior_mat(:,:,i)-beta(1) - beta(3)*128);    
-    %%% in a few cases it appears that assuming y midpoint implies
-    %%% impossible x values
-    a_mat_pix(a_mat_pix<1) = 1;
-    p_mat_pix(p_mat_pix>xDim) = xDim;
-    c_mat_pix = (beta(2).^-1)*(cluster_struct.final_centroid_mat(:,:,i)-beta(1) - beta(3)*128);
+    end    
     c_mat_ap = cluster_struct.final_centroid_mat(:,:,i);
     
     edge_flags = cluster_struct.final_edge_flag_mat(:,:,i);
