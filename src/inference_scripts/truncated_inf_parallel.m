@@ -83,7 +83,7 @@ out_suffix =  ['/' project '/w' num2str(w) '_t' num2str(Tres)...
     '_no_ends' num2str(clipped_ends) '_tbins' num2str(dynamic_bins) ...
     '/K' num2str(K(1)) '_t_window' num2str(round(t_window/60)) '_t_inf' t_inf_str out_string '/']; 
 if savio
-    out_prefix = '/global/scratch/nlammers/eve7stripes_data/inference_out/';
+    out_prefix = '/global/scratch/nlammers/eve7stripes_data/';
 else    
     out_prefix = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
 %     out_prefix = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
