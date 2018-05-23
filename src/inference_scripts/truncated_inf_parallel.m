@@ -3,8 +3,8 @@ close all
 clear 
 addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 % addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
-savio = 0; % Specify whether inference is being conducted on Savio Cluster
-ap_ref_index = 1:7;
+savio = 1; % Specify whether inference is being conducted on Savio Cluster
+% ap_ref_index = 1:7;
 ap_ref_index = reshape([ap_ref_index-1/3 ;ap_ref_index; ap_ref_index + 1/3],1,[]);
 
 if savio
