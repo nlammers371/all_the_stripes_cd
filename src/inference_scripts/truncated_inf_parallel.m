@@ -25,12 +25,12 @@ end
 % Core parameters
 inference_times = 40*60;%(10:5:45)*60;
 t_window = 30*60; % determines width of sliding window
-K = 3; % State(s) to use for inference
+K = 2; % State(s) to use for inference
 w = 7; % Memory
 Tres = 20; % Time Resolution
 dp_bootstrap = 1;
 set_bootstrap = 0;
-n_bootstrap = 10;
+n_bootstrap = 1;
 sample_size = 8000;
 min_dp_per_inf = 1250; % inference will be aborted if fewer present
 project = 'eve7stripes_inf_2018_04_28';
