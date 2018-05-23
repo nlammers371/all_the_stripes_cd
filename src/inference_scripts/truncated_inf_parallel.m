@@ -7,7 +7,7 @@ ap_ref_index = 1:7;
 ap_ref_index = reshape([ap_ref_index-1/3 ;ap_ref_index; ap_ref_index + 1/3],1,[]);
 
 if savio
-    addpath('..\..\hmmm\src\utilities\');
+    addpath('..\..\..\hmmm\src\utilities\');
     %Get environment variable from job script
     savio_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};    
     bin_groups = cell(1,length(savio_groups));
@@ -26,11 +26,11 @@ end
 inference_times = 40*60;%(10:5:45)*60;
 t_window = 30*60; % determines width of sliding window
 K = 2; % State(s) to use for inference
-w = 8; % Memory
+w = 7; % Memory
 Tres = 20; % Time Resolution
 dp_bootstrap = 1;
 set_bootstrap = 0;
-n_bootstrap = 10;
+n_bootstrap = 1;
 sample_size = 8000;
 min_dp_per_inf = 1250; % inference will be aborted if fewer present
 project = 'eve7stripes_inf_2018_04_28';
@@ -212,7 +212,7 @@ for g = 1:length(bin_groups) % loop through different AP groups
             end
             % generate structure containing only elligible trace
             % fragments
-            inference_set = [];
+            inference_set = [];            
             for m = 1:length(trace_ind)
                 temp = trace_struct_filtered(trace_ind(m));
                 tt = temp.time_inf;
