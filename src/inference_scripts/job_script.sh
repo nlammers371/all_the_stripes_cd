@@ -9,7 +9,7 @@
 #SBATCH --qos=savio_normal
 #
 # Account:
-#SBATCH --account=fc_mhmm
+#SBATCH --account=ac_mhmm
 #
 # Request one node:
 #SBATCH --nodes=1
@@ -25,10 +25,10 @@
 #
 #SBATCH -a 1-21
 ## Command(s) to run:
-module load matlab/R2015a
+module load matlab
 # Make a temporary scratch directory for storing job
 # and task information, to coordinate parallelization.
 # This directory can then be referenced by assigning it to
 # a 'parcluster.JobStorageLocation' property in your script.
 mkdir -p /global/scratch/$USER/$SLURM_JOB_ID
-matlab -nodisplay -nodesktop < main_02_inf_script.m
+matlab -nodisplay -nodesktop < truncated_inf_parallel.m
