@@ -21,7 +21,7 @@ else
     end
 end
 %-------------------------------System Vars-------------------------------%
-w = 7; % Memory
+w = 6; % Memory
 Tres = 20; % Time Resolution
 %%%% Stable Params %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 stop_time_inf = 60; % Specify cut-off time for inference
@@ -35,7 +35,7 @@ n_localEM = 25; % set num local runs
 n_steps_max = 500; % set max steps per inference
 eps = 1e-4; % set convergence criteria
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Thes may chaange
+% Thes may change
 inference_times = 40*60;%(10:5:45)*60;
 t_window = 30*60; % determines width of sliding window
 K = 2; % State(s) to use for inference
