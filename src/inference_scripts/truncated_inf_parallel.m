@@ -1,13 +1,13 @@
 % Script to Conduct HMM Inference on Experimental Data
 close all
 clear 
-addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 % addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
-savio = 0; % Specify whether inference is being conducted on Savio Cluster
+savio = 1; % Specify whether inference is being conducted on Savio Cluster
 ap_ref_index = 1:7;
 ap_ref_index = reshape([ap_ref_index-1/3 ;ap_ref_index; ap_ref_index + 1/3],1,[]);
 
 if savio
+    addpath('..\..\..\hmmm\src\utilities\');
     %Get environment variable from job script
     savio_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};    
     bin_groups = cell(1,length(savio_groups));
@@ -15,14 +15,26 @@ if savio
         bin_groups{i} = ap_ref_index(savio_groups{i});
     end
 else
+    addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
     bin_groups = {};
     for i = 2:22
         bin_groups = [bin_groups{:} {round(i/3,1)}];
     end
 end
 %-------------------------------System Vars-------------------------------%
+% Core parameters
+inference_times = 40*60;%(10:5:45)*60;
+t_window = 30*60; % determines width of sliding window
+K = 3; % State(s) to use for inference
 w = 7; % Memory
 Tres = 20; % Time Resolution
+dp_bootstrap = 1;
+set_bootstrap = 0;
+n_bootstrap = 10;
+sample_size = 8000;
+min_dp_per_inf = 1250; % inference will be aborted if fewer present
+project = 'eve7stripes_inf_2018_04_28';
+
 %%%% Stable Params %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 stop_time_inf = 60; % Specify cut-off time for inference
 min_dp = 10; % min length of traces to include
@@ -34,11 +46,8 @@ fluo_field = 1; % specify which fluo field to (1 or 3)
 n_localEM = 25; % set num local runs
 n_steps_max = 500; % set max steps per inference
 eps = 1e-4; % set convergence criteria
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Thes may chaange
-inference_times = 40*60;%(10:5:45)*60;
-t_window = 30*60; % determines width of sliding window
-K = 3; % State(s) to use for inference
 %------------------Define Inference Variables------------------------------%
 %if 1, prints each local em result to file (fail-safe in event that
 if length(inference_times) == 1
@@ -54,8 +63,7 @@ else
 end
 
 %----------------------------Bootstrap Vars-------------------------------%
-dp_bootstrap = 1;
-set_bootstrap = 0;
+
 if set_bootstrap
     out_string = '_set';    
 elseif dp_bootstrap
@@ -63,12 +71,9 @@ elseif dp_bootstrap
 else
     error('inference type unspecified')
 end
-n_bootstrap = 1;
-sample_size = 8000;
-min_dp_per_inf = 1250; % inference will be aborted if fewer present
+
 
 %----------------------------Set Write Paths------------------------------%
-project = 'eve7stripes_inf_2018_04_28';
 datapath = ['../../dat/' project '/']; %Path to raw data
 % generate read and write names
 dataname = ['inference_traces_' project '_dT' num2str(Tres) '.mat'];
