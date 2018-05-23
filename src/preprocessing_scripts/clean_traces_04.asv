@@ -213,7 +213,7 @@ end
 %----------------calculate consistent "effective" AP mapping--------------%
 %%% get average stripe positions
 stripe_t_vec = stripe_pos_struct(1).plot_times;
-t_map = 35; % this defines reference position for stripes
+t_map = 35;
 map_filter = stripe_t_vec == t_map;
 stripe_pos_mat= NaN(length(set_index),7);
 for i = 1:length(set_index)
@@ -229,6 +229,7 @@ for i = 1:length(set_index)
 end
 
 stripe_positions_ap = nanmean(stripe_pos_mat); %cross-set mean
+
 %%% calculate mapping transformation for each set
 ap_raw_vec = [nucleus_struct_final.ap_vector_interp];
 yp_vec = round([nucleus_struct_final.yPos_interp]);
@@ -237,8 +238,8 @@ nucleus_vec = [nucleus_struct_final.ncID_long];
 ap_new_vec = NaN(1,length(ap_raw_vec));
 
 for i = 1:length(set_index)
-    stripe_id_mat = stripe_pos_struct(i).stripe_id_mat(:,:,map_filter);
-    stripe_ap_mat = fov_stripe_partitions(i).ap_ref_mat;
+    stripe_id_mat = stripe_pos_struct(i).stripe_id_mat(:,:,map_filter); % get stripe ID FOV at map time
+    stripe_ap_mat = fov_stripe_partitions(i).ap_ref_mat; % get AP position FOV
     set_stripes = unique(round(stripe_id_mat))';
     set_stripes = set_stripes(~isnan(set_stripes)); 
     set_stripes = set_stripes(set_stripes>0);   
@@ -255,7 +256,7 @@ for i = 1:length(set_index)
         warp_factors = diff(ap_map_vec)./diff(ap_orig_vec); % mapping constants
         ap_orig_centers = (ap_orig_vec(2:end)+ap_orig_vec(1:end-1))/2;
         offsets = (ap_map_vec(2:end)+ap_map_vec(1:end-1))/2;
-%         offsets = offsets + ap_orig_centers;    
+%         offsets = offsets;    
         set_y_filter = set_vec == set_index(i) & yp_vec == k;
         ap_new_vec(ap_raw_vec<ap_orig_vec(1)&set_y_filter) = warp_factors(1)*(...
                 ap_raw_vec(ap_raw_vec<ap_orig_vec(1)&set_y_filter)-ap_orig_centers(1))+offsets(1);    
