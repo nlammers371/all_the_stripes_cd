@@ -64,8 +64,8 @@ else
     error('inference type unspecified')
 end
 n_bootstrap = 10;
-sample_size = 5000;
-min_dp_per_inf = 750; % inference will be aborted if fewer present
+sample_size = 8000;
+min_dp_per_inf = 1250; % inference will be aborted if fewer present
 
 %----------------------------Set Write Paths------------------------------%
 project = 'eve7stripes_inf_2018_04_28';
