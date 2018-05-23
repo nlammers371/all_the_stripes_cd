@@ -23,7 +23,7 @@ load(fov_name); % ap and stripe info at pixel level
 load(nucleus_read_name);
 load(cluster_name);
 
-save_spline_figs = 0; % if 1 generates spline figs
+save_spline_figs = 1; % if 1 generates spline figs
 %% generate fluorescence maps 
 %%%%%%%%%%%%%%%%%%% Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Color Info
@@ -34,7 +34,7 @@ stripe_colors = cm(1+((1:7)-1)*increment,:);
 xDim = size(fov_stripe_partitions(1).stripe_id_mat(:,:,1),2);
 yDim = size(fov_stripe_partitions(1).stripe_id_mat(:,:,1),1);
 %%% Smoothing Kernel
-stripe_radius = round(mean([fov_stripe_partitions.ap_x_factor]))*1.5; % pixels 
+stripe_radius = round(mean([fov_stripe_partitions.ap_x_pixel]))*.015; % pixels 
 kernel_radius = 60; % radius of gauss kernel...nucleus diameter ~= 20-25
 kernel_sigma = 15; 
 [x_ref_kernel, y_ref_kernel] = meshgrid(1:2*kernel_radius+1,1:2*kernel_radius+1);
@@ -70,7 +70,7 @@ set_index = unique(set_vec_particle); % indexing vector
 stripe_class_vec = NaN(1,length(trace_struct));
 stripe_pos_struct = struct; % save stripe location arrays
 %%% perform stripe classifications
-for i = 2%1:length(set_index)
+for i = 1:length(set_index)
     xp_set_vec = xPos_vec_particle(set_vec_particle==set_index(i));
     yp_set_vec = yPos_vec_particle(set_vec_particle==set_index(i));
     ap_set_vec = ap_vec_particle(set_vec_particle==set_index(i));

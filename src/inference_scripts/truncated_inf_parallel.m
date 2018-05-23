@@ -1,8 +1,8 @@
 % Script to Conduct HMM Inference on Experimental Data
 close all
 clear 
-addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
-% addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
+% addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
+addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 savio = 0; % Specify whether inference is being conducted on Savio Cluster
 ap_ref_index = 1:7;
 ap_ref_index = reshape([ap_ref_index-1/3 ;ap_ref_index; ap_ref_index + 1/3],1,[]);
@@ -85,8 +85,8 @@ out_suffix =  ['/' project '/w' num2str(w) '_t' num2str(Tres)...
 if savio
     out_prefix = '/global/scratch/nlammers/eve7stripes_data/inference_out/';
 else    
-    out_prefix = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
-%     out_prefix = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+%     out_prefix = 'E:/Nick/Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
+    out_prefix = 'D:\Data\Nick\LivemRNA\LivemRNAFISH\Dropbox (Garcia Lab)/eve7stripes_data/inference_out/';
 end
 out_dir = [out_prefix out_suffix];
 mkdir(out_dir);

@@ -55,9 +55,8 @@ for i = 1:length(cp_filenames) % Loop through filenames
     load([FolderPath ap_filenames{i}]) % AP Info   
     load([FolderPath nc_filenames{i}]) % Ellipse Info    
     raw_data = load([FolderPath cp_filenames{i}]); % Particles    
-<<<<<<< HEAD
     SetID = i;    
-   %Angle between the x-axis and the AP-axis
+    %Angle between the x-axis and the AP-axis
     APAngle=atan2((coordPZoom(2)-coordAZoom(2)),(coordPZoom(1)-coordAZoom(1)));        
     APLength=sqrt((coordPZoom(2)-coordAZoom(2))^2+(coordPZoom(1)-coordAZoom(1))^2);            
     APPosImage=zeros(yDim,xDim);        
@@ -69,10 +68,6 @@ for i = 1:length(cp_filenames) % Loop through filenames
             APPosImage(k,j)=APPosition/APLength;
         end
     end 
-=======
-    SetID = i;        
-   
->>>>>>> fdf9b77aecc0c4ed847d837a3ce66946992e37e4
     %%% pull trace and nuclei variables
     time_raw = raw_data.ElapsedTime*60; % time vector            
     traces_raw = raw_data.AllTracesVector; % Array with a column for each trace    

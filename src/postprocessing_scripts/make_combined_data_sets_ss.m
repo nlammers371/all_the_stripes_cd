@@ -76,7 +76,7 @@ for a = 1:length(nc_ncID_vec)  % use nuclei as basis for iteration
     nc_setID_vec = repelem(setID,length(nc_stripe_vec))';
     nc_particle_vec = repelem(ParticleID,length(nc_stripe_vec))';
     nc_nucleus_vec = repelem(ncID,length(nc_stripe_vec))';
-    nc_inf_flag_vec = repelem(0,length(nc_stripe_vec))';
+    nc_inf_flag_vec = repelem(NaN,length(nc_stripe_vec))';
     if ~isnan(ParticleID)
         % extract relevant particle metrics    
         trace_time = trace_struct_final(tr_trID_vec==ParticleID).time_interp;
@@ -118,15 +118,16 @@ for a = 1:length(nc_ncID_vec)  % use nuclei as basis for iteration
         nc_tr_filter = ismember(round(nc_time_vec),round(trace_time));
 %         nc_mat(nc_tr_filter,7) = tr_stripe_id_long;
         nc_mat(nc_tr_filter,9) = tr_inf_flag;
+%         nc_mat(~nc_tr_filter,9) = NaN;
         nc_mat(~nc_tr_filter,2) = NaN;
     end    
     ind_vec = entry_index+1:entry_index+size(nc_mat,1); % align to main set    
     %%% add entries to master set
-   longform_data(ind_vec,1:size(nc_mat,2)) = nc_mat;
-   if ~isnan(ParticleID)
-       longform_data(ind_vec(nc_tr_filter),size(nc_mat,2)+1:end) = trace_mat;
-   end
-   entry_index = ind_vec(end);
+    longform_data(ind_vec,1:size(nc_mat,2)) = nc_mat;
+    if ~isnan(ParticleID)
+        longform_data(ind_vec(nc_tr_filter),size(nc_mat,2)+1:end) = trace_mat;
+    end
+    entry_index = ind_vec(end);
 end
 %% Perform QC Checks
 cm = jet(128);
@@ -176,7 +177,7 @@ set(gca,'ytick',0:5:50,'yticklabels',0:5:50)
 title('fraction active viterbi states over time')
 colorbar
 saveas(v_state_fig,[DataPath '\viterbi_stripe_tracking_check.png'],'png')
-%%
+
 ap_register_fig = figure;
 cm = jet(128);
 colormap(cm)
@@ -194,6 +195,30 @@ for i = 1:7
    s.MarkerEdgeAlpha = 0;
 end
 saveas(ap_register_fig,[DataPath '\registered_ap_check.png'],'png')
+
+%%% Make Set-specific figures
+set_stripe_fig = figure;
+for i = 1:3
+    for j = 1:4
+        setID = 4*(i-1)+j;
+        if setID > 11
+            continue
+        end
+        subplot(3,4,setID);
+        hold on
+        for k = 1:7
+            row_filter = longform_data(:,8)==k & longform_data(:,3) == setID;
+            s = scatter(ap_registered(row_filter),time_vec(row_filter)/60,40,'MarkerfaceColor',cm(15*k,:));
+            s.MarkerFaceAlpha = .05;
+            s.MarkerEdgeAlpha = 0;
+        end        
+        title(['Set: ' num2str(setID)])
+        xlim([.2 .9])
+        ylim([0 50])
+    end
+end
+set_stripe_fig.Position = [0 0 1024 1024];
+saveas(set_stripe_fig,[DataPath '\set_specific_registered_ap.png'],'png')
 % % s = scatter(ap_raw,time_vec,40,stripe_bin_vec,'filled');
 % s.MarkerFaceAlpha = .1;
 % s.MarkerEdgeAlpha = 0;
