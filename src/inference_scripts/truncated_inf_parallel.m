@@ -3,11 +3,8 @@ close all
 clear 
 % addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 savio = 1; % Specify whether inference is being conducted on Savio Cluster
-ap_list = [round((2:3:22)/3,1) round((4:3:22)/3,1)];
-ap_ref_index = cell(1,length(ap_list));
-for i = 1:length(ap_list)
-    ap_ref_index{i} = ap_list(i);
-end
+ap_ref_index = [round((2:3:22)/3,1) round((4:3:22)/3,1)];
+
 if savio
     addpath('/global/home/users/nlammers/repos/hmmm/src/utilities/');
     %Get environment variable from job script

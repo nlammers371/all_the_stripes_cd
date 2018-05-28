@@ -23,7 +23,7 @@
 # Wall clock limit:
 #SBATCH --time=72:00:00
 #
-#SBATCH -a 1-21
+#SBATCH -a 1-14
 ## Command(s) to run:
 module load matlab
 # Make a temporary scratch directory for storing job
