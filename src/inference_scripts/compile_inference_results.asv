@@ -1,5 +1,6 @@
 function inf_struct = compile_inference_results(project,inference_type,w,K,Tres,alpha,fluo_type,clipped,...
     clipped_ends,dynamic_bins,t_window,t_inf,DPFolder)
+
 %Compile results into summary structure. Generate summary plots
 %-----------------------------ID Variables--------------------------------%
 stripe_range = 1:7;
@@ -41,7 +42,7 @@ glb_all = struct;
 f_pass = 1;
 % p_mat = NaN(length(filenames),20);
 % dup_list = [];
-for f = 1:length(filenames)
+for f = 1:%length(filenames)
     % load the eve validation results into a structure array 'output'    
     load([folder_path filenames{f}]);
 %     if output.skip_flag == 1
@@ -200,7 +201,7 @@ med_noise = NaN(1,length(bin_range),length(time_index));
 std_noise = NaN(1,length(bin_range),length(time_index));
 med_n_dp = NaN(1,length(bin_range),length(time_index));
 med_n_tr = NaN(1,length(bin_range),length(time_index));
-% med_eff_time = NaN(1,length(bin_range),length(time_index));
+med_eff_time = NaN(1,length(bin_range),length(time_index));
 for i = 1:length(bin_range)
     bin = bin_range(i);
     for t = 1:length(time_index)
@@ -232,7 +233,7 @@ for i = 1:length(bin_range)
                     quantile(noise_all(bin_vec==bin&time_vec==time),.25));
         med_n_dp(i,t) = median(n_dp_all(bin_vec==bin&time_vec==time));
         med_n_tr(i,t) = median(n_traces_all(bin_vec==bin&time_vec==time));
-%         med_eff_time(i,t) = median(effective_times_all(bin_vec==bin&time_vec==time));
+        med_eff_time(i,t) = median(effective_times_all(bin_vec==bin&time_vec==time));
     end
 end
 % off rate, on rate and emission rates 
@@ -292,7 +293,7 @@ for i = 1:length(bin_range)
         hmm_results(ind).noise_std = std_noise(i,t);
         hmm_results(ind).N_dp = med_n_dp(i,t);
         hmm_results(ind).N_tr = med_n_tr(i,t);
-%         hmm_results(ind).t_inf_effective = med_eff_time(i,t);
+        hmm_results(ind).t_inf_effective = med_eff_time(i,t);
         hmm_results(ind).noise_mean = med_noise(i,t);
         if K == 3
             hmm_results(ind).on_ratio_mean = med_on_ratio(t,i);
@@ -312,9 +313,9 @@ for i = 1:length(bin_range)
         hmm_results(ind).t_inf = time_index(t);
         hmm_results(ind).alpha = alpha;
         hmm_results(ind).dT = Tres;
-        hmm_results(ind).fluo_type = fluo_type; 
-        hmm_results(ind).clipped = clipped; 
-        hmm_results(ind).clipped = clipped_ends; 
+        hmm_results(ind).fluo_type = fluo_field; 
+        hmm_results(ind).clipped = clipped_traces; 
+        hmm_results(ind).clipped = no_ends_flag; 
     end
 end
 save([OutPath '/hmm_results_t_window' num2str(t_window)  '_t_inf' num2str(t_inf)  '.mat'],'hmm_results')

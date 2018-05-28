@@ -1,13 +1,12 @@
 % Script to Conduct HMM Inference on Experimental Data
 close all
 clear 
-addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 % addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 savio = 0; % Specify whether inference is being conducted on Savio Cluster
-ap_ref_index = 1:7;
-ap_ref_index = reshape([ap_ref_index-1/3 ;ap_ref_index; ap_ref_index + 1/3],1,[]);
+ap_list = [round((2:3:22)/3,1) round((4:3:22)/3,1)];
 
 if savio
+    addpath('/global/home/users/nlammers/repos/hmmm/src/utilities/');
     %Get environment variable from job script
     savio_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};    
     bin_groups = cell(1,length(savio_groups));
@@ -15,10 +14,12 @@ if savio
         bin_groups{i} = ap_ref_index(savio_groups{i});
     end
 else
-    bin_groups = {};
-    for i = 2:22
-        bin_groups = [bin_groups{:} {round(i/3,1)}];
-    end
+    addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
+%     bin_groups = {};
+%     for i = 2:22
+%         bin_groups = [bin_groups{:} {round(i/3,1)}];
+%     end
+    bin_groups = {round((2:22)/3,1)};
 end
 %-------------------------------System Vars-------------------------------%
 % Core parameters
@@ -29,9 +30,9 @@ w = 7; % Memory
 Tres = 20; % Time Resolution
 dp_bootstrap = 1;
 set_bootstrap = 0;
-n_bootstrap = 1;
+n_bootstrap = 10;
 sample_size = 8000;
-min_dp_per_inf = 1250; % inference will be aborted if fewer present
+min_dp_per_inf = 500; % inference will be aborted if fewer present
 project = 'eve7stripes_inf_2018_04_28';
 
 %%%% Stable Params %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -202,7 +203,6 @@ for g = 1:length(bin_groups) % loop through different AP groups
                 end
             end                
             trace_filter = ismember(stripe_id_vec,bin_list);
-%                 error('asfa')
             if set_bootstrap
                 trace_ind = find(([trace_struct_filtered.setID]~=boot_set)&...
                     trace_filter);
@@ -211,7 +211,7 @@ for g = 1:length(bin_groups) % loop through different AP groups
             end
             % generate structure containing only elligible trace
             % fragments
-            inference_set = [];
+            inference_set = [];            
             for m = 1:length(trace_ind)
                 temp = trace_struct_filtered(trace_ind(m));
                 tt = temp.time_inf;
@@ -224,8 +224,8 @@ for g = 1:length(bin_groups) % loop through different AP groups
             end            
             if isempty(inference_set)
                 skip_flag = 1;
-            else
-                set_size = length([inference_set.time_inf]);
+            else                
+                set_size = length([inference_set.time_inf]);                                
                 if set_size < min_dp_per_inf
                     skip_flag = 1;
                 else
@@ -256,7 +256,7 @@ for g = 1:length(bin_groups) % loop through different AP groups
                     sample_particles = [inference_set(sample_ids).ParticleID];
                     for tr = 1:length(sample_ids)
                         fluo_data{tr} = inference_set(sample_ids(tr)).fluo_inf;                    
-                    end            
+                    end                                
                 else % Take all relevant traces if not bootstrapping
                     error('non-bootstrap option is deprecated')
 %                     fluo_data = cell([length(trace_ind), 1]);            
@@ -315,8 +315,8 @@ for g = 1:length(bin_groups) % loop through different AP groups
                     local_struct(i_local).soft_struct = local_out.soft_struct;               
                 end
 %                     delete(gcp('nocreate')); % Delete pool (prevent time out)
-                local_meta(s).init = init_struct;
-                local_meta(s).local = local_struct;
+%                 local_meta(s).init = init_struct;
+%                 local_meta(s).local = local_struct;
                 [logL, max_index] = max([local_struct.logL]); % Get index of best result           
                 output.local_runs = local_struct;            
                 % Save parameters from most likely local run

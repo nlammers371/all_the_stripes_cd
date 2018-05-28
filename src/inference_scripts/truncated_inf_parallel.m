@@ -2,10 +2,12 @@
 close all
 clear 
 % addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
-savio = 1; % Specify whether inference is being conducted on Savio Cluster
-ap_ref_index = 1:7;
-ap_ref_index = reshape([ap_ref_index-1/3 ;ap_ref_index; ap_ref_index + 1/3],1,[]);
-
+savio = 0; % Specify whether inference is being conducted on Savio Cluster
+ap_list = [round((2:3:22)/3,1) round((4:3:22)/3,1)];
+ap_ref_index = cell(1,length(ap_list));
+for i = 1:length(ap_list)
+    ap_ref_index{i} = ap_list(i);
+end
 if savio
     addpath('/global/home/users/nlammers/repos/hmmm/src/utilities/');
     %Get environment variable from job script
@@ -16,10 +18,11 @@ if savio
     end
 else
     addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
-    bin_groups = {};
-    for i = 2:22
-        bin_groups = [bin_groups{:} {round(i/3,1)}];
-    end
+%     bin_groups = {};
+%     for i = 2:22
+%         bin_groups = [bin_groups{:} {round(i/3,1)}];
+%     end
+    bin_groups = {round((2:22)/3,1)};
 end
 %-------------------------------System Vars-------------------------------%
 % Core parameters
@@ -30,9 +33,9 @@ w = 7; % Memory
 Tres = 20; % Time Resolution
 dp_bootstrap = 1;
 set_bootstrap = 0;
-n_bootstrap = 10;
+n_bootstrap = 8;
 sample_size = 8000;
-min_dp_per_inf = 1250; % inference will be aborted if fewer present
+min_dp_per_inf = 500; % inference will be aborted if fewer present
 project = 'eve7stripes_inf_2018_04_28';
 
 %%%% Stable Params %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -203,7 +206,6 @@ for g = 1:length(bin_groups) % loop through different AP groups
                 end
             end                
             trace_filter = ismember(stripe_id_vec,bin_list);
-%                 error('asfa')
             if set_bootstrap
                 trace_ind = find(([trace_struct_filtered.setID]~=boot_set)&...
                     trace_filter);
@@ -225,8 +227,8 @@ for g = 1:length(bin_groups) % loop through different AP groups
             end            
             if isempty(inference_set)
                 skip_flag = 1;
-            else
-                set_size = length([inference_set.time_inf]);                
+            else                
+                set_size = length([inference_set.time_inf]);                                
                 if set_size < min_dp_per_inf
                     skip_flag = 1;
                 else
@@ -316,8 +318,8 @@ for g = 1:length(bin_groups) % loop through different AP groups
                     local_struct(i_local).soft_struct = local_out.soft_struct;               
                 end
 %                     delete(gcp('nocreate')); % Delete pool (prevent time out)
-                local_meta(s).init = init_struct;
-                local_meta(s).local = local_struct;
+%                 local_meta(s).init = init_struct;
+%                 local_meta(s).local = local_struct;
                 [logL, max_index] = max([local_struct.logL]); % Get index of best result           
                 output.local_runs = local_struct;            
                 % Save parameters from most likely local run
