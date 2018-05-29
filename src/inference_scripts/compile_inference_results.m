@@ -45,20 +45,15 @@ for f = 1:length(filenames)
     % load the eve validation results into a structure array 'output'    
     load([folder_path filenames{f}]);
 %     if output.skip_flag == 1
-    if length(fieldnames(output)) < 2
+    if length(fieldnames(output)) < 2 
         continue
-    end
-%     for i = 1:length(filenames)
-%         if sum(ismember(output.particle_ids(1:20),p_mat(i,:)))==20
-%             dup_list = [dup_list f];
-%         end
-%     end
-%     p_mat(f,:) = output.particle_ids(1:20);
+    end    
     for fn = fieldnames(output)'
         glb_all(f_pass).(fn{1}) = output.(fn{1});
     end
     glb_all(f_pass).source = filenames{f};        
-    f_pass = f_pass + 1
+    f_pass
+    f_pass = f_pass + 1;    
 end
 % dup_list = unique(dup_list);
 % %%
@@ -69,9 +64,14 @@ alpha = glb_all(1).alpha;
 bin_vec = [];
 bin_cell = {};
 for i = 1:length(glb_all)
-    bin_vec = [bin_vec mean(glb_all(i).stripe_id)];
+    if min(glb_all(i).stripe_id) == .7 && max(glb_all(i).stripe_id) == 7.3
+        bin_vec = [bin_vec 0];
+    else
+        bin_vec = [bin_vec mean(glb_all(i).stripe_id)];
+    end
     bin_cell = [bin_cell{:} {glb_all(i).stripe_id}];
 end
+% error('afs')
 % bin_vec = [glb_all.APbin];
 bin_range = unique(bin_vec);
 time_vec = [glb_all.t_inf];
@@ -83,9 +83,14 @@ n_dp_all = zeros(1,length(glb_all));
 n_traces_all = zeros(1,length(glb_all));
 % effective_times_all = zeros(1,length(glb_all));
 dwell_all = NaN(K,length(glb_all));
+quality_flags = ones(1,length(glb_all)); % if 1 will be used for summary stats
 % Extract variables and perform rate fitting as needed
 for i = 1:length(glb_all)    
-    [initiation_rates(:,i), ranked_r] = sort(60*[glb_all(i).r]); 
+    [r_inf, ranked_r] = sort(60*[glb_all(i).r]); 
+    if min(r_inf) < -500 % address structural issues with inference
+        quality_flags(i) = 0;       
+    end
+    initiation_rates(:,i) = r_inf;
     pi0 = glb_all(i).pi0(ranked_r);    
     noise_all(i) = sqrt(glb_all(i).noise); 
     n_dp_all(i) = glb_all(i).N;
@@ -135,7 +140,7 @@ end
 med_R_orig = zeros(length(time_index),K^2,length(bin_range));
 std_R_orig = zeros(length(time_index),K^2,length(bin_range));
 avg_A = zeros(length(time_index),K^2,length(bin_range));
-std_A = zeros(length(time_index),K^2,length(bin_range));
+% std_A = zeros(length(time_index),K^2,length(bin_range));
 med_R_fit = zeros(length(time_index),K^2,length(bin_range));
 std_R_fit = zeros(length(time_index),K^2,length(bin_range));
 med_on_ratio = NaN(length(time_index),length(bin_range));
@@ -146,27 +151,28 @@ for b = 1:length(bin_range)
     bin = bin_range(b);
     for t = 1:length(time_index)
         time = time_index(t);
-        A_mean = mean(A_array(bin_vec==bin&time_vec==time,:),1);
+        q_filter = quality_flags&bin_vec==bin&time_vec==time;
+        A_mean = mean(A_array(q_filter,:),1);
         A_reshape = reshape(A_mean,K,K);
         %Normalize A
         A_mean = reshape(A_reshape ./ repmat(sum(A_reshape),K,1),1,[]);
         avg_A(t,:,b) = A_mean;    
         %Calculate and Store R moments        
         
-        med_R_orig(t,:,b) = median(R_orig_array(bin_vec==bin&time_vec==time,:),1);        
-        std_R_orig(t,:,b) = .5*(quantile(R_orig_array(bin_vec==bin&time_vec==time,:),.75,1)-...
-                                quantile(R_orig_array(bin_vec==bin&time_vec==time,:),.25,1));            
-        med_R_fit(t,:,b) = median(R_fit_array(bin_vec==bin&time_vec==time,:),1);
-        std_R_fit(t,:,b) = .5*(quantile(R_fit_array(bin_vec==bin&time_vec==time,:),.75,1)-...
-                               quantile(R_fit_array(bin_vec==bin&time_vec==time,:),.25,1));
+        med_R_orig(t,:,b) = median(R_orig_array(q_filter,:),1);        
+        std_R_orig(t,:,b) = .5*(quantile(R_orig_array(q_filter,:),.75,1)-...
+                                quantile(R_orig_array(q_filter,:),.25,1));            
+        med_R_fit(t,:,b) = median(R_fit_array(q_filter,:),1);
+        std_R_fit(t,:,b) = .5*(quantile(R_fit_array(q_filter,:),.75,1)-...
+                               quantile(R_fit_array(q_filter,:),.25,1));
         if K == 3
-            k_on_rat = R_fit_array(bin_vec==bin&time_vec==time,2)./...
-                            R_fit_array(bin_vec==bin&time_vec==time,6);
+            k_on_rat = R_fit_array(q_filter,2)./...
+                            R_fit_array(q_filter,6);
             med_on_ratio(t,b) = median(k_on_rat);
             std_on_ratio(t,b) = .5*(quantile(k_on_rat,.75,1)-...
                                    quantile(k_on_rat,.25,1));
-            k_off_rat = R_fit_array(bin_vec==bin&time_vec==time,8)./...
-                            R_fit_array(bin_vec==bin&time_vec==time,4);
+            k_off_rat = R_fit_array(q_filter,8)./...
+                            R_fit_array(q_filter,4);
             med_off_ratio(t,b) = median(k_off_rat);
             std_off_ratio(t,b) = .5*(quantile(k_off_rat,.75,1)-...
                                    quantile(k_off_rat,.25,1));
@@ -205,34 +211,35 @@ for i = 1:length(bin_range)
     bin = bin_range(i);
     for t = 1:length(time_index)
         time = time_index(t);
-        for k = 1:K
-            if ~isempty(initiation_rates(k,bin_vec==bin&time_vec==time))
-                med_initiation(k,i,t) =  median(initiation_rates(k,bin_vec==bin&time_vec==time));            
-                std_initiation(k,i,t) = .5*(quantile(initiation_rates(k,bin_vec==bin&time_vec==time),.75)-...
-                        quantile(initiation_rates(k,bin_vec==bin&time_vec==time),.25));                  
-                med_occupancy(k,i,t) = median(occupancy(k,bin_vec==bin&time_vec==time));
-                std_occupancy(k,i,t) = .5*(quantile(occupancy(k,bin_vec==bin&time_vec==time),.75)-...
-                        quantile(occupancy(k,bin_vec==bin&time_vec==time),.25)); 
-                med_dwell(k,i,t) = median(dwell_all(k,bin_vec==bin&time_vec==time));
-                std_dwell(k,i,t) = .5*(quantile(dwell_all(k,bin_vec==bin&time_vec==time),.75)-...
-                        quantile(dwell_all(k,bin_vec==bin&time_vec==time),.25));        
-    %             avg_pi0(k,i,t) = mean(pi0_all(k,bin_vec==bin&time_vec==time));
-    %             std_pi0(k,i,t) = std(pi0_all(k,bin_vec==bin&time_vec==time));
+        q_filter = quality_flags&bin_vec==bin&time_vec==time;
+        for k = 1:K            
+            if ~isempty(initiation_rates(k,q_filter))
+                med_initiation(k,i,t) =  median(initiation_rates(k,q_filter));            
+                std_initiation(k,i,t) = .5*(quantile(initiation_rates(k,q_filter),.75)-...
+                        quantile(initiation_rates(k,q_filter),.25));                  
+                med_occupancy(k,i,t) = median(occupancy(k,q_filter));
+                std_occupancy(k,i,t) = .5*(quantile(occupancy(k,q_filter),.75)-...
+                        quantile(occupancy(k,q_filter),.25)); 
+                med_dwell(k,i,t) = median(dwell_all(k,q_filter));
+                std_dwell(k,i,t) = .5*(quantile(dwell_all(k,q_filter),.75)-...
+                        quantile(dwell_all(k,q_filter),.25));        
+    %             avg_pi0(k,i,t) = mean(pi0_all(k,q_filter));
+    %             std_pi0(k,i,t) = std(pi0_all(k,q_filter));
             end
         end     
         if K == 3
-            init_rat = initiation_rates(3,bin_vec==bin&time_vec==time)./...
-                            initiation_rates(2,bin_vec==bin&time_vec==time);
+            init_rat = initiation_rates(3,q_filter)./...
+                            initiation_rates(2,q_filter);
             med_init_ratio(t,i) = median(init_rat);
             std_init_ratio(t,i) = .5*(quantile(init_rat,.75)-...
                         quantile(init_rat,.25));
         end
-        med_noise(i,t) = median(noise_all(bin_vec==bin&time_vec==time));
-        std_noise(i,t) = .5*(quantile(noise_all(bin_vec==bin&time_vec==time),.75)-...
-                    quantile(noise_all(bin_vec==bin&time_vec==time),.25));
-        med_n_dp(i,t) = median(n_dp_all(bin_vec==bin&time_vec==time));
-        med_n_tr(i,t) = median(n_traces_all(bin_vec==bin&time_vec==time));
-%         med_eff_time(i,t) = median(effective_times_all(bin_vec==bin&time_vec==time));
+        med_noise(i,t) = median(noise_all(q_filter));
+        std_noise(i,t) = .5*(quantile(noise_all(q_filter),.75)-...
+                    quantile(noise_all(q_filter),.25));
+        med_n_dp(i,t) = median(n_dp_all(q_filter));
+        med_n_tr(i,t) = median(n_traces_all(q_filter));
+%         med_eff_time(i,t) = median(effective_times_all(q_filter));
     end
 end
 % off rate, on rate and emission rates 
@@ -249,21 +256,21 @@ if K == 3
         for t = 1:length(time_index)
             time = time_index(t);        
             %Calculate and Store R moments  
-            r21_vec = R_fit_array(bin_vec==bin&time_vec==time,2)/2;
-            r12_vec = R_fit_array(bin_vec==bin&time_vec==time,4);
-            r32_vec = R_fit_array(bin_vec==bin&time_vec==time,6);
-            r23_vec = R_fit_array(bin_vec==bin&time_vec==time,8)/2;
-            pi1_vec = occupancy(1,bin_vec==bin&time_vec==time)';
-            pi2_vec = occupancy(2,bin_vec==bin&time_vec==time)';
-            pi3_vec = occupancy(3,bin_vec==bin&time_vec==time)';
+            r21_vec = R_fit_array(q_filter,2)/2;
+            r12_vec = R_fit_array(q_filter,4);
+            r32_vec = R_fit_array(q_filter,6);
+            r23_vec = R_fit_array(q_filter,8)/2;
+            pi1_vec = occupancy(1,q_filter)';
+            pi2_vec = occupancy(2,q_filter)';
+            pi3_vec = occupancy(3,q_filter)';
             on_rate_all = (r21_vec.*pi1_vec+r32_vec.*(r32_vec./(r32_vec+r12_vec)).*pi2_vec)./(pi1_vec+(r32_vec./(r32_vec+r12_vec)).*pi2_vec);
             on_rate_eff_med(t,b) = median(on_rate_all);
             on_rate_eff_ste(t,b) = .5*(quantile(on_rate_all,.75)-quantile(on_rate_all,.25));
             off_rate_all = (r23_vec.*pi3_vec+r12_vec.*(r12_vec./(r32_vec+r12_vec)).*pi2_vec)./(pi3_vec+(r12_vec./(r32_vec+r12_vec)).*pi2_vec);
             off_rate_eff_med(t,b) = median(off_rate_all);
             off_rate_eff_ste(t,b) = .5*(quantile(off_rate_all,.75)-quantile(off_rate_all,.25));
-            init_rate_all =  (pi2_vec.*initiation_rates(2,bin_vec==bin&time_vec==time)'+...
-                pi3_vec.*initiation_rates(3,bin_vec==bin&time_vec==time)')./(pi2_vec+pi3_vec);  
+            init_rate_all =  (pi2_vec.*initiation_rates(2,q_filter)'+...
+                pi3_vec.*initiation_rates(3,q_filter)')./(pi2_vec+pi3_vec);  
             init_rate_eff_med(t,b) = median(init_rate_all);
             init_rate_eff_ste(t,b) = .5*(quantile(init_rate_all,.75)-quantile(init_rate_all,.25));
         end
@@ -274,7 +281,7 @@ hmm_results = struct;
 for i = 1:length(bin_range)
     for t = 1:length(time_index)
         ind = (i-1)*length(time_index) + t;
-%         hmm_results(ind).N = bin_counts(i);
+%         hmm_results(ind).N = bin_counts(i);        
         hmm_results(ind).initiation_mean = med_initiation(:,i,t);
         hmm_results(ind).initiation_std = std_initiation(:,i,t);    
         hmm_results(ind).occupancy_mean = med_occupancy(:,i,t);
@@ -294,6 +301,11 @@ for i = 1:length(bin_range)
         hmm_results(ind).N_tr = med_n_tr(i,t);
 %         hmm_results(ind).t_inf_effective = med_eff_time(i,t);
         hmm_results(ind).noise_mean = med_noise(i,t);
+        hmm_results(ind).time_vec = time_vec;
+        hmm_results(ind).bin_vec = bin_vec;
+        hmm_results(ind).initiation_array = initiation_rates;
+        hmm_results(ind).R_orig_array = R_orig_array;
+        hmm_results(ind).R_fit_array = R_fit_array;
         if K == 3
             hmm_results(ind).on_ratio_mean = med_on_ratio(t,i);
             hmm_results(ind).on_ratio_ste = std_on_ratio(t,i);

@@ -14,8 +14,8 @@ t_window = 30; % size of sliding window used
 t_inf = 40;
 %-----------------------------ID Variables--------------------------------%
 w_inf = 7; %memory assumed for inference
-w_vit = 6;
-K = 2; %states used for final inference
+w_vit = 7;
+K = 3; %states used for final inference
 Tres = 20; %time resolution
 aggregate_fits = 0;  % if 1 apply same params to each trace regardless of stripe identity
 %%% id variables
@@ -47,29 +47,34 @@ dT = hmm_results(1).dT;
 viterbi_fit_struct = struct;
 skipped_stripes = [];
 i_pass = 1;
-for i = 1:length(inference_traces)
-    stripe_id_vec = inference_traces(i).stripe_id_vec_interp;
-    stripe_id = round(mode(stripe_id_vec),1);
+%%
+parfor i = 1:length(trace_struct_final)
+    MeanAP = round(trace_struct_final(i).MeanAP);        
     if aggregate_fits
         hmm_bin = hmm_results(round(hmm_regions,1)==0);
     else
-        hmm_bin = hmm_results(round(hmm_regions,1)==stripe_id);
-    end    
-    if isempty(hmm_bin)        
+        hmm_index = MeanAP<=hmm_rb&MeanAP>=hmm_lb;
+        hmm_bin = hmm_results(hmm_index);
+    end        
+    viterbi_fit_struct(i).skipped = 0;
+    viterbi_fit_struct(i).hmm_bin = hmm_regions(hmm_index);
+    if isempty(hmm_bin)|| length(trace_struct_final(i).fluo_interp) < w        
 %         error('wtf')
+        viterbi_fit_struct(i).skipped = 1;
+        viterbi_fit_struct(i).ParticleID = trace_struct_final(i).ParticleID;
         continue
     end    
     v = hmm_bin.initiation_mean/60*dT;
     noise = hmm_bin.noise_mean;
-    pi0_log = log([.5;.5]);
+    pi0_log = log([1;1;1]/3);
     A_log = reshape(log(hmm_bin.A_mean),K,K);                
-    fluo = inference_traces(i).fluo_interp;            
+    fluo = trace_struct_final(i).fluo_interp;            
     v_fit = viterbi (fluo, v', noise, pi0_log, ...
-                                    A_log, K, w_inf, alpha);    
-    v_fit.time_exp = inference_traces(i).time_interp;
+                                    A_log, K, w, alpha);    
+    v_fit.time_exp = trace_struct_final(i).time_interp;
     v_fit.fluo_exp = fluo;            
     v_fit.v = v;
-    v_fit.w = w_inf;        
+    v_fit.w = w;        
     v_fit.alpha = alpha;
     v_fit.noise = noise;
     v_fit.pi0 = exp(pi0_log);
@@ -77,11 +82,10 @@ for i = 1:length(inference_traces)
     v_fit.agg_fit_flag = aggregate_fits;
 %     error('afsa')
 %     v_fit.trace_source = datapath;
-    viterbi_fit_struct(i_pass).v_fit = v_fit;
-    viterbi_fit_struct(i_pass).ParticleID = inference_traces(i).ParticleID;
-    i_pass = i_pass + 1;
-    disp([num2str(i) ' of ' num2str(length(inference_traces)) ' completed'])
+    viterbi_fit_struct(i).v_fit = v_fit;
+    viterbi_fit_struct(i).ParticleID = trace_struct_final(i).ParticleID;
+%     i_pass = i_pass + 1;
+    disp([num2str(i) ' of ' num2str(length(trace_struct_final)) ' completed'])
 end
-
 save([OutPath '/viterbi_fits_w' num2str(w_inf) '_t_window' num2str(t_window) '_t_inf' num2str(t_inf) ...
     '.mat'],'viterbi_fit_struct') 

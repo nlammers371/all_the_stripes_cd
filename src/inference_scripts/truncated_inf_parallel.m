@@ -9,10 +9,11 @@ if savio
     addpath('/global/home/users/nlammers/repos/hmmm/src/utilities/');
     %Get environment variable from job script
     savio_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};    
-    bin_groups = cell(1,length(savio_groups));
-    for i =1:length(bin_groups)
-        bin_groups{i} = ap_ref_index(savio_groups{i});
-    end
+%     bin_groups = cell(1,length(savio_groups));
+%     for i =1:length(bin_groups)
+%         bin_groups{i} = ap_ref_index(savio_groups{i});
+%     end
+    bin_groups = {(2:22)/3};
 else
     addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 %     bin_groups = {};
@@ -23,14 +24,14 @@ else
 end
 %-------------------------------System Vars-------------------------------%
 % Core parameters
-inference_times = 40*60;%(10:5:45)*60;
-t_window = 30*60; % determines width of sliding window
+inference_times = 25*60;%(10:5:45)*60;
+t_window = 50*60; % determines width of sliding window
 K = 3; % State(s) to use for inference
 w = 7; % Memory
 Tres = 20; % Time Resolution
 dp_bootstrap = 1;
 set_bootstrap = 0;
-n_bootstrap = 8;
+n_bootstrap = 10;
 sample_size = 8000;
 min_dp_per_inf = 500; % inference will be aborted if fewer present
 project = 'eve7stripes_inf_2018_04_28';

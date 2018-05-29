@@ -14,8 +14,8 @@ t_window = 30; % size of sliding window used
 t_inf = 40;
 %-----------------------------ID Variables--------------------------------%
 w_inf = 7; %memory assumed for inference
-w_vit = 6;
-K = 2; %states used for final inference
+w_vit = 7;
+K = 3; %states used for final inference
 Tres = 20; %time resolution
 aggregate_fits = 0;  % if 1 apply same params to each trace regardless of stripe identity
 %%% id variables

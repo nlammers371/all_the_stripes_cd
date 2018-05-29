@@ -5,7 +5,7 @@ clear
 close all
 %%%%%%-----Set System Params
 w = 7; %memory assumed for inference
-K = 2; %states used for final inference
+K = 3; %states used for final inference
 Tres = 20; %Time Resolution
 alpha = 1.4; % MS2 rise time in time steps
 fluo_type = 1; % type of spot integration used
@@ -223,7 +223,7 @@ saveas(set_stripe_fig,[DataPath '\set_specific_registered_ap.png'],'png')
 % s.MarkerFaceAlpha = .1;
 % s.MarkerEdgeAlpha = 0;
 %% Save Data
-csvwrite_with_headers([DataPath '\eve_data_longform_w_nuclei.csv'], ...
+csvwrite_with_headers([DataPath '\eve_data_longform_w_nuclei_K' num2str(K) '.csv'], ...
                        longform_data, header,9); 
                  
-save([DataPath 'eve_data_longform_w_nuclei.mat'],'longform_data')                   
+save([DataPath 'eve_data_longform_w_nuclei_K' num2str(K) '.mat'],'longform_data')                   
