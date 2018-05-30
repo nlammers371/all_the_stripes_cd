@@ -35,8 +35,8 @@ load([DataPath 'hmm_results_t_window' num2str(t_window) '_t_inf' num2str(t_inf) 
 % load viterbi fits
 load([DataPath 'viterbi_fits_t_window' num2str(t_window) '_t_inf' num2str(t_inf)  '.mat'])
 v_specific = viterbi_fit_struct;
-% load([DataPath 'viterbi_fits_t_window50_t_inf25.mat'])
-load([DataPath 'viterbi_fits_t_window' num2str(t_window) '_t_inf' num2str(t_inf)  '_agg.mat'])
+load([DataPath 'viterbi_fits_t_window50_t_inf25.mat'])
+% load([DataPath 'viterbi_fits_t_window' num2str(t_window) '_t_inf' num2str(t_inf)  '_agg.mat'])
 v_agg = viterbi_fit_struct;
 
 % load traces
