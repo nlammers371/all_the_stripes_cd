@@ -10,8 +10,8 @@ clipped = 1; % if 0, traces are taken to be full length of nc14
 stop_time_inf = 60;
 clipped_ends = 1;
 dynamic_bins = 1; % if 1, use time-resolved region classifications
-t_window = 30; % size of sliding window used
-t_inf = 40;
+t_window = 50; % size of sliding window used
+t_inf = 25;
 %-----------------------------ID Variables--------------------------------%
 w = 7; %memory assumed for inference
 K = 3; %states used for final inference
@@ -47,7 +47,7 @@ viterbi_fit_struct = struct;
 skipped_stripes = [];
 i_pass = 1;
 
-parfor i = 1:length(trace_struct_final)
+for i = 1:length(trace_struct_final)
 %     MeanAP = round(trace_struct_final(i).MeanAP);        
     stripe_id =round(mode(trace_struct_final(i).stripe_id_vec),1);
     if aggregate_fits
@@ -70,6 +70,7 @@ parfor i = 1:length(trace_struct_final)
     A_log = reshape(log(hmm_bin.A_mean),K,K);                
     fluo = trace_struct_final(i).fluo_interp;            
     v_fit = viterbi (fluo, v', noise, pi0_log, A_log, K, w, alpha);    
+    error('afa')
     v_fit.time_exp = trace_struct_final(i).time_interp;
     v_fit.fluo_exp = fluo;            
     v_fit.v = v;
