@@ -2,18 +2,18 @@
 close all
 clear 
 % addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
-savio = 0; % Specify whether inference is being conducted on Savio Cluster
+savio = 1; % Specify whether inference is being conducted on Savio Cluster
 ap_ref_index = [round((2:3:22)/3,1) round((4:3:22)/3,1)];
 
 if savio
     addpath('/global/home/users/nlammers/repos/hmmm/src/utilities/');
     %Get environment variable from job script
     savio_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};    
-    bin_groups = cell(1,length(savio_groups));
-    for i =1:length(bin_groups)
-        bin_groups{i} = ap_ref_index(savio_groups{i});
-    end
-%     bin_groups = {round((2:22)/3,1)};
+%     bin_groups = cell(1,length(savio_groups));
+%     for i =1:length(bin_groups)
+%         bin_groups{i} = ap_ref_index(savio_groups{i});
+%     end
+    bin_groups = {round((2:22)/3,1)};
 else
     addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 %     bin_groups = {};
