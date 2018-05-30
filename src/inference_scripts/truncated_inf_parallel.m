@@ -9,10 +9,10 @@ if savio
     addpath('/global/home/users/nlammers/repos/hmmm/src/utilities/');
     %Get environment variable from job script
     savio_groups = {str2num(getenv('SLURM_ARRAY_TASK_ID'))};    
-%     bin_groups = cell(1,length(savio_groups));
-%     for i =1:length(bin_groups)
-%         bin_groups{i} = ap_ref_index(savio_groups{i});
-%     end
+    bin_groups = cell(1,length(savio_groups));
+    for i =1:length(bin_groups)
+        bin_groups{i} = ap_ref_index(savio_groups{i});
+    end
     bin_groups = {round((2:22)/3,1)};
 else
     addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
