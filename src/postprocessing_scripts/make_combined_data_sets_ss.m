@@ -35,7 +35,8 @@ load([DataPath 'hmm_results_t_window' num2str(t_window) '_t_inf' num2str(t_inf) 
 % load viterbi fits
 load([DataPath 'viterbi_fits_t_window' num2str(t_window) '_t_inf' num2str(t_inf)  '.mat'])
 v_specific = viterbi_fit_struct;
-load([DataPath 'viterbi_fits_t_window50_t_inf25.mat'])
+% load([DataPath 'viterbi_fits_t_window50_t_inf25.mat'])
+load([DataPath 'viterbi_fits_t_window' num2str(t_window) '_t_inf' num2str(t_inf)  '_agg.mat'])
 v_agg = viterbi_fit_struct;
 
 % load traces
@@ -88,18 +89,30 @@ for a = 1:length(nc_ncID_vec)  % use nuclei as basis for iteration
         tr_stripe_id_long = repelem(stripe_id,length(trace_time))';    
         hmm_bin = hmm_results(round(hmm_stripe_index,1)==round(stripe_id,1));
         if ~isempty(hmm_bin)            
-            R_mat = repmat(hmm_bin.R_fit_mean,length(trace_time),1);
-            R_mat = R_mat(:,2:3)/60;
-            r_mat = repmat(hmm_bin.initiation_mean'/60,length(trace_time),1);
+            R_mat_full = repmat(hmm_bin.R_fit_mean,length(trace_time),1);
+            if K == 2
+                R_mat = R_mat_full(:,2:3)/60;
+                r_mat = repmat(hmm_bin.initiation_mean'/60,length(trace_time),1);
+            elseif K == 3
+                effective_off = ((R_mat_full(:,4)+R_mat_full(:,6))./R_mat_full(:,4).*-R_mat_full(:,5).^-1 + ...
+                                R_mat_full(:,6) ./ R_mat_full(:,4).*-R_mat_full(:,9).^-1).^-1;
+                R_mat = [R_mat_full(:,2) effective_off/60];                
+                r_mat_full = repmat(hmm_bin.initiation_mean'/60,length(trace_time),1);
+                s2 = -R_mat_full(1,9)^-1;
+                s1 = -R_mat_full(1,5)^-1;
+                eff_init = s1/(s1+s2)*r_mat_full(:,2)+s2/(s1+s2)*r_mat_full(:,3);
+                r_mat = [r_mat_full(:,1) eff_init];                
+            end
+            
             va_id = find(va_particle_vec==ParticleID);
-            if isempty(va_id)
+            if isempty(v_agg(va_id).v_fit)
                 va_mat = NaN(length(trace_time),2);
             else
                 v_fit_a = v_agg(va_id).v_fit;
                 va_mat = [double(v_fit_a.z_viterbi') v_fit_a.fluo_viterbi'];
             end
             vs_id = find(vs_particle_vec==ParticleID);
-            if isempty(vs_id)
+            if isempty(v_specific(vs_id).v_fit)
                 vs_mat = NaN(length(trace_time),2);
             else
                 v_fit_s = v_specific(vs_id).v_fit;
