@@ -96,7 +96,7 @@ for a = 1:length(nc_ncID_vec)  % use nuclei as basis for iteration
             elseif K == 3
                 effective_off = ((R_mat_full(:,4)+R_mat_full(:,6))./R_mat_full(:,4).*-R_mat_full(:,5).^-1 + ...
                                 R_mat_full(:,6) ./ R_mat_full(:,4).*-R_mat_full(:,9).^-1).^-1;
-                R_mat = [R_mat_full(:,2) effective_off/60];                
+                R_mat = [R_mat_full(:,2)/60 effective_off/60];                
                 r_mat_full = repmat(hmm_bin.initiation_mean'/60,length(trace_time),1);
                 s2 = -R_mat_full(1,9)^-1;
                 s1 = -R_mat_full(1,5)^-1;
