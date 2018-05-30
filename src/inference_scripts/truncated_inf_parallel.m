@@ -3,7 +3,7 @@ close all
 clear 
 % addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 savio = 1; % Specify whether inference is being conducted on Savio Cluster
-ap_ref_index = [round((2:3:22)/3,1) round((4:3:22)/3,1)];
+ap_ref_index = round((2:22)/3,1);
 
 if savio
     addpath('/global/home/users/nlammers/repos/hmmm/src/utilities/');
@@ -13,19 +13,19 @@ if savio
     for i =1:length(bin_groups)
         bin_groups{i} = ap_ref_index(savio_groups{i});
     end
-    bin_groups = {round((2:22)/3,1)};
+%     bin_groups = {round((2:22)/3,1)};
 else
     addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
-%     bin_groups = {};
-%     for i = 2:22
-%         bin_groups = [bin_groups{:} {round(i/3,1)}];
-%     end
-    bin_groups = {round((2:22)/3,1)};
+    bin_groups = {};
+    for i = 2:22
+        bin_groups = [bin_groups{:} {round(i/3,1)}];
+    end
+%     bin_groups = {round((2:22)/3,1)};
 end
 %-------------------------------System Vars-------------------------------%
 % Core parameters
-inference_times = 25*60;%(10:5:45)*60;
-t_window = 50*60; % determines width of sliding window
+inference_times = 40*60;%(10:5:45)*60;
+t_window = 40*60; % determines width of sliding window
 K = 3; % State(s) to use for inference
 w = 7; % Memory
 Tres = 20; % Time Resolution
