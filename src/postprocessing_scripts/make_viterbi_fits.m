@@ -47,7 +47,7 @@ viterbi_fit_struct = struct;
 skipped_stripes = [];
 i_pass = 1;
 
-for i = 1:length(trace_struct_final)
+parfor i = 1:length(trace_struct_final)
 %     MeanAP = round(trace_struct_final(i).MeanAP);        
     stripe_id =round(mode(trace_struct_final(i).stripe_id_vec),1);
     if aggregate_fits
@@ -69,8 +69,7 @@ for i = 1:length(trace_struct_final)
     pi0_log = log(ones(1,K)/3);
     A_log = reshape(log(hmm_bin.A_mean),K,K);                
     fluo = trace_struct_final(i).fluo_interp;            
-    v_fit = viterbi (fluo, v', noise, pi0_log, A_log, K, w, alpha);    
-    error('afa')
+    v_fit = viterbi (fluo, v', noise, pi0_log, A_log, K, w, alpha);        
     v_fit.time_exp = trace_struct_final(i).time_interp;
     v_fit.fluo_exp = fluo;            
     v_fit.v = v;
