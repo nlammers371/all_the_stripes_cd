@@ -2,7 +2,7 @@
 close all
 clear 
 % addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
-savio = 1; % Specify whether inference is being conducted on Savio Cluster
+savio = 0; % Specify whether inference is being conducted on Savio Cluster
 ap_ref_index = round((2:22)/3,1);
 
 if savio
