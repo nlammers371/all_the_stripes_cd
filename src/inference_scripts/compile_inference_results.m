@@ -206,12 +206,16 @@ med_noise = NaN(1,length(bin_range),length(time_index));
 std_noise = NaN(1,length(bin_range),length(time_index));
 med_n_dp = NaN(1,length(bin_range),length(time_index));
 med_n_tr = NaN(1,length(bin_range),length(time_index));
+n_boots_used = NaN(length(time_index),length(bin_range));
+n_boots_total = NaN(length(time_index),length(bin_range));
 % med_eff_time = NaN(1,length(bin_range),length(time_index));
 for i = 1:length(bin_range)
     bin = bin_range(i);
     for t = 1:length(time_index)
         time = time_index(t);
         q_filter = quality_flags&bin_vec==bin&time_vec==time;
+        n_boots_used(t,i) = sum(q_filter);
+        n_boots_total(t,i) = sum(bin_vec==bin&time_vec==time);
         for k = 1:K            
             if ~isempty(initiation_rates(k,q_filter))
                 med_initiation(k,i,t) =  median(initiation_rates(k,q_filter));            
@@ -254,7 +258,8 @@ if K == 3
     for b = 1:length(bin_range)
         bin = bin_range(b);
         for t = 1:length(time_index)
-            time = time_index(t);        
+            time = time_index(t);     
+            q_filter = quality_flags&bin_vec==bin&time_vec==time;
             %Calculate and Store R moments  
             r21_vec = R_fit_array(q_filter,2)/2;
             r12_vec = R_fit_array(q_filter,4);
@@ -281,7 +286,9 @@ hmm_results = struct;
 for i = 1:length(bin_range)
     for t = 1:length(time_index)
         ind = (i-1)*length(time_index) + t;
-%         hmm_results(ind).N = bin_counts(i);        
+%         hmm_results(ind).N = bin_counts(i);    
+        hmm_results(ind).n_boots_used = n_boots_used(t,i);
+        hmm_results(ind).n_boots_total = n_boots_total(t,i);
         hmm_results(ind).initiation_mean = med_initiation(:,i,t);
         hmm_results(ind).initiation_std = std_initiation(:,i,t);    
         hmm_results(ind).occupancy_mean = med_occupancy(:,i,t);
