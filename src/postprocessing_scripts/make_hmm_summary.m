@@ -4,7 +4,7 @@ clear
 close all
 %%%%%%-----Set System Params
 w = 7; %memory assumed for inference
-K = 2; %states used for final inference
+K = 3; %states used for final inference
 Tres = 20; %Time Resolution
 alpha = 1.4; % MS2 rise time in time steps
 fluo_type = 1; % type of spot integration used
@@ -31,7 +31,7 @@ id_thing = [ '/w' num2str(w) '_t' num2str(Tres)...
 DataPath = ['../../dat/' project '/' id_thing '/K' num2str(K) '_summary_stats/' ];
 % load inference summary 
 load([DataPath 'hmm_results_t_window' num2str(t_window) '_t_inf' num2str(t_inf)  '.mat'])
-
+%%
 hmm_stripe_index = [hmm_results.binID]; % inf region ref vec
 
 header = {'stripe_id','k_on', 'k_off', 'initiation_rate_off', 'initiation_rate_on'};

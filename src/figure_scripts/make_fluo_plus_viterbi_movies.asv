@@ -58,7 +58,7 @@ for i = 1:7
 end
 edge_width = 2; % width of border between patches
 %Embryo ID and Folder location
-for set_num = 1:length(cp_filenames)
+for set_num = 1%:length(cp_filenames)
     Prefix = prefix_list{set_num};
     %Load the data
     load([FolderPath '/' frame_list{set_num}])
@@ -164,7 +164,7 @@ for set_num = 1:length(cp_filenames)
                 fluo = 0;  
                 t_vec = time_vec(nucleus_vec==Nucleus);
                 s_vec = round(stripe_id_vec(nucleus_vec==Nucleus));
-                [~,t_ind] = min(abs(t_vec-frame_time*60));
+                [~,t_ind] = min(abs(t_vec-frame_time));
                 stripe_id = s_vec(t_ind);
             else
                 fluo = fluo(end);
@@ -203,10 +203,11 @@ for set_num = 1:length(cp_filenames)
             else
                 v_fit = viterbi_fit_struct(v_index).v_fit;
                 v_time = v_fit.time_exp;
-                d_time = abs(v_time-60*frame_time);
-%                 d_time(d_time>0) = 0;
+                d_time = v_time-60*frame_time;
+                d_time(d_time>0) = 0;
                 [~, mi] = min(d_time);
-                v_state = v_fit.z_viterbi(mi);                
+                v_state = v_fit.z_viterbi(mi);
+                error('afsa')
             end
             
             %get coordinates of nucleus patch
