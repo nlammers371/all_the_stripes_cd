@@ -47,14 +47,14 @@ for i = 1:length(hmm_stripe_index)
                         R_full(6) ./ R_full(4).*-R_full(9).^-1).^-1;
         R = [R_full(2) effective_off];                
         r_full = hmm_results(i).initiation_mean;
-        s2 = -R_full(1,9)^-1;
-        s1 = -R_full(1,5)^-1;
-        eff_init = s1/(s1+s2)*r_full(2)+s2/(s1+s2)*r_full(3);
+        s2 = hmm_results(i).occupancy_mean(3);
+        s1 = hmm_results(i).occupancy_mean(2);
+        eff_init = r_full(2);%+ s2/(s1+s2)*r_full(3);
         r = [r_full(1) eff_init];                
     end
     param_mat(i,2:end) = [R r];
 end
-
+%%
 csvwrite_with_headers([DataPath '\eve_hmm_summary_K' num2str(K) '.csv'], ...
                        param_mat, header,9); 
                  

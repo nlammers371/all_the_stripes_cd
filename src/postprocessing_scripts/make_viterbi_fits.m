@@ -1,22 +1,21 @@
 % Script to generate Viterbi Fits for Inference traces
 close all
 clear 
-% addpath('E:\Nick\projects\hmmm\src\utilities\');
-addpath('D:\Data\Nick\projects\hmmm\src\utilities\');
+addpath('E:\Nick\projects\hmmm\src\utilities\');
+% addpath('D:\Data\Nick\projects\hmmm\src\utilities\');
 %------------------------------Set System Params--------------------------%
 alpha = 1.4; % MS2 rise time in time steps
 fluo_type = 1; % type of spot integration used
 clipped = 1; % if 0, traces are taken to be full length of nc14
-stop_time_inf = 60;
 clipped_ends = 1;
 dynamic_bins = 1; % if 1, use time-resolved region classifications
-t_window = 50; % size of sliding window used
-t_inf = 25;
+t_window = 30; % size of sliding window used
+t_inf = 40;
 %-----------------------------ID Variables--------------------------------%
 w = 7; %memory assumed for inference
 K = 3; %states used for final inference
 Tres = 20; %time resolution
-aggregate_fits = 1;  % if 1 apply same params to each trace regardless of stripe identity
+aggregate_fits = 0;  % if 1 apply same params to each trace regardless of stripe identity
 %%% id variables
 datatype = 'weka';
 inference_type = 'dp';
@@ -86,4 +85,4 @@ parfor i = 1:length(trace_struct_final)
     disp([num2str(i) ' of ' num2str(length(trace_struct_final)) ' completed'])
 end
 save([OutPath '/viterbi_fits_w' num2str(w) '_t_window' num2str(t_window) '_t_inf' num2str(t_inf) ...
-    '_agg.mat'],'viterbi_fit_struct') 
+    '.mat'],'viterbi_fit_struct') 
