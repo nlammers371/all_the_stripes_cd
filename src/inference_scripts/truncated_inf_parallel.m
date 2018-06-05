@@ -1,9 +1,8 @@
 % Script to Conduct HMM Inference on Experimental Data
 close all
 clear 
-% addpath('D:\Data\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
 savio = 0; % Specify whether inference is being conducted on Savio Cluster
-ap_ref_index = round((2:22)/3,1);
+ap_ref_index = round((2:22)/3,1); % only used for savio inference
 
 if savio
     addpath('/global/home/users/nlammers/repos/hmmm/src/utilities/');
@@ -13,30 +12,25 @@ if savio
     for i =1:length(bin_groups)
         bin_groups{i} = ap_ref_index(savio_groups{i});
     end
-%     bin_groups = {round((2:22)/3,1)};
 else
     addpath('E:\Nick\projects\hmmm\src\utilities'); % Route to hmmm utilities folder
     bin_groups = {};
-    for i = 2:22
-        bin_groups = [bin_groups{:} {round(i/3,1)}];
-    end
-%     bin_groups = {round((2:22)/3,1)};
 end
 %-------------------------------System Vars-------------------------------%
 % Core parameters
-inference_times = 40*60;%(10:5:45)*60;
-t_window = 40*60; % determines width of sliding window
+inference_times = 40*60;%(10:5:45)*60; % time at which to conduct sliding window inference
+t_window = 30*60; % determines width of sliding window
 K = 3; % State(s) to use for inference
 w = 7; % Memory
-Tres = 20; % Time Resolution
-dp_bootstrap = 1;
-set_bootstrap = 0;
-n_bootstrap = 10;
-sample_size = 8000;
-min_dp_per_inf = 500; % inference will be aborted if fewer present
+dp_bootstrap = 1; % if 1 use bootstrap resampling at level of data points
+set_bootstrap = 0; % if 1 use bootstrap resampling at level of data sets (embryos)
+n_bootstrap = 5; % number of bootstraps (overridden for set bootstrapping)
+sample_size = 8000; % number of data points to use
+min_dp_per_inf = 1000; % inference will be aborted if fewer present
 project = 'eve7stripes_inf_2018_04_28';
 
-%%%% Stable Params %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%% Stable Params (these rarely change) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\
+Tres = 20; % Time Resolution
 stop_time_inf = 60; % Specify cut-off time for inference
 min_dp = 10; % min length of traces to include
 clipped_ends = 1; % if one, remove final w time steps from traces
@@ -50,7 +44,6 @@ eps = 1e-4; % set convergence criteria
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %------------------Define Inference Variables------------------------------%
-%if 1, prints each local em result to file (fail-safe in event that
 if length(inference_times) == 1
     t_inf_str = num2str(round(inference_times/60));
 else
@@ -64,6 +57,9 @@ else
 end
 
 %----------------------------Bootstrap Vars-------------------------------%
+if set_bootstrap && dp_bootstrap
+    error('Both set and dp bootstrapping set to 1. Choose one.')
+end
 
 if set_bootstrap
     out_string = '_set';    
@@ -141,7 +137,7 @@ if clipped_ends
 end
 set_index = [trace_struct_filtered.setID];
 set_vec = unique(set_index);
-if set_bootstrap
+if set_bootstrap % overrides n_bootstrap entry above
     n_bootstrap = length(set_vec);
 end
 first_time_vec = [];
@@ -182,8 +178,7 @@ for g = 1:length(bin_groups) % loop through different AP groups
                 '_bin' num2str(round(10*bin_list(1))) '_' num2str(round(10*bin_list(end))) ...
                 '_time' num2str(round(t_inf/60)) '_t' inference_id];                
             out_file = [out_dir '/' fName_sub];
-            % Initialize logL to - infinity
-            logL_max = -Inf;
+            
             % Extract fluo_data
             temp_filter = (last_time_vec-5*60) > t_start ...
                     & (first_time_vec+5*60) <= t_stop;
@@ -196,11 +191,7 @@ for g = 1:length(bin_groups) % loop through different AP groups
                     time_filter = tt>=t_start & tt < t_stop;
                     stripe_id_trace = trace_struct_filtered(m).stripe_id_vec(time_filter);
                     stripe_id_trace(isnan(stripe_id_trace)) = Inf;
-%                     if sum(isnan(stripe_id_trace)) > .5* length(stripe_id_trace)
-%                         stripe_id_vec(m) = NaN;
-%                     else
-                   stripe_id_vec(m) = round(mode(trace_struct_filtered(m).stripe_id_vec(time_filter)),1);
-%                     end
+                    stripe_id_vec(m) = round(mode(trace_struct_filtered(m).stripe_id_vec(time_filter)),1);
                 end
             end                
             trace_filter = ismember(stripe_id_vec,bin_list);
@@ -219,7 +210,7 @@ for g = 1:length(bin_groups) % loop through different AP groups
                 ft = temp.fluo_inf;
                 temp.time_inf = tt(tt>=t_start & tt < t_stop);
                 temp.fluo_inf = ft(tt>=t_start & tt < t_stop);
-                if sum(temp.fluo_inf>0) > 1 % remove pure zero stretches
+                if sum(temp.fluo_inf>0) > 1 % remove pure zero fragments
                     inference_set = [inference_set temp];
                 end                
             end            
@@ -260,21 +251,12 @@ for g = 1:length(bin_groups) % loop through different AP groups
                     end                                
                 else % Take all relevant traces if not bootstrapping
                     error('non-bootstrap option is deprecated')
-%                     fluo_data = cell([length(trace_ind), 1]);            
-%                     particle_id_list = [];
-%                     particle_time_cell = {};
-%                     for tr = 1:length(trace_ind)
-%                         fluo_data{tr} = inference_set(tr).fluo_inf;
-%                         particle_id_list = [particle_id_list inference_set(tr).ParticleID];
-%                         particle_time_cell = [particle_time_cell{:} {inference_set(tr_id).time_inf}];
-%                     end
                 end                 
-%                     error('asfa')
                 % Random initialization of model parameters
                 param_init = initialize_random (K, w, fluo_data);
                 % Approximate inference assuming iid data for param initialization                
                 local_iid_out = local_em_iid_reduced_memory_truncated (fluo_data, param_init.v, ...
-                                    param_init.noise, K, w, alpha, 500, 1e-4);
+                                    param_init.noise, K, w, alpha, n_steps_max, eps);
                 noise_iid = 1/sqrt(exp(local_iid_out.lambda_log));
                 v_iid = exp(local_iid_out.v_logs);            
                 p = gcp('nocreate');
@@ -311,15 +293,10 @@ for g = 1:length(bin_groups) % loop through different AP groups
                     local_struct(i_local).r = exp(local_out.v_logs).*local_out.v_signs / Tres;                                
                     local_struct(i_local).noise = 1/exp(local_out.lambda_log);
                     local_struct(i_local).pi0 = exp(local_out.pi0_log);
-%                         local_struct(i_local).total_time = local_out.runtime;
                     local_struct(i_local).total_steps = local_out.n_iter;               
                     local_struct(i_local).soft_struct = local_out.soft_struct;               
                 end
-%                     delete(gcp('nocreate')); % Delete pool (prevent time out)
-%                 local_meta(s).init = init_struct;
-%                 local_meta(s).local = local_struct;
                 [logL, max_index] = max([local_struct.logL]); % Get index of best result           
-                output.local_runs = local_struct;            
                 % Save parameters from most likely local run
                 output.pi0 =local_struct(max_index).pi0;                        
                 output.r = local_struct(max_index).r(:);
@@ -360,7 +337,7 @@ for g = 1:length(bin_groups) % loop through different AP groups
                 output.dynamic_bins = 1;
             end
             output.skip_flag = skip_flag;
-%             output.inference_traces = fluo_data;
+            output.inference_traces = fluo_data;
             save([out_file '.mat'], 'output');           
         end  
     end
