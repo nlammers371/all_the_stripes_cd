@@ -25,12 +25,15 @@ for d = 1 : length(dirinfo)
     ap_filenames = [ap_filenames {[thisdir '/APDetection.mat']}];        
 end
 
-coord_set = NaN(length(ap_filenames),5);
-header = {'set_id', 'a_x','a_y', 'p_x', 'p_y'};
+coord_set = NaN(length(ap_filenames),6);
+header = {'set_id', 'a_x','a_y', 'p_x', 'p_y','ap_angle'};
 for i = 1:length(ap_filenames) % Loop through filenames    
     % read in raw files
     load([FolderPath ap_filenames{i}]) % AP Info   
     coord_set(i,1) = i;
-    coord_set(i,2:3) = CoordA;
-    coord_set(i,4:5) = CoordP;
+    coord_set(i,2:3) = coordAZoom;
+    coord_set(i,4:5) = coordPZoom;
+    coord_set(i,6) = atan2((coordPZoom(2)-coordAZoom(2)),(coordPZoom(1)-coordAZoom(1)));        
 end
+
+csvwrite_with_headers([out_path '\AP_XY_coordinates.csv'], coord_set, header,9); 

@@ -47,18 +47,18 @@ for i = 1:length(set_index)
     [x_ref, y_ref] = meshgrid(1:xDim,1:yDim);
     APAngle = trace_struct([trace_struct.setID]==i).APAngle;
     APLength = trace_struct([trace_struct.setID]==i).APLength;
-    coordAZoom = trace_struct([trace_struct.setID]==i).coordAZoom;
-        
+    coordAZoom = trace_struct([trace_struct.setID]==i).coordAZoom;    
     Angle=atan2((y_ref-coordAZoom(2)),(x_ref-coordAZoom(1)));            
     Distance=sqrt((coordAZoom(2)-y_ref).^2+(coordAZoom(1)-x_ref).^2);
     APPosition=Distance.*cos(Angle-APAngle);
     APPosImage=APPosition/APLength;    
     ap_x_projection = mean(APPosImage);
-    ap_x_pixel = length(ap_x_projection)/(max(ap_x_projection)-min(ap_x_projection));
-    
+    ap_x_pixel = length(ap_x_projection)/(max(ap_x_projection)-min(ap_x_projection)); % this only "works" becaus x axis is very 
+                                                                                      % very nearly aligned with AP axis
+    ap_x_pixel1 = APLength/100;
     a_mat_pix = NaN(size(cluster_struct.final_anterior_mat(:,:,i)));
     p_mat_pix = NaN(size(cluster_struct.final_anterior_mat(:,:,i)));
-    c_mat_pix = NaN(size(cluster_struct.final_anterior_mat(:,:,i)));
+    c_mat_pix = NaN(size(cluster_struct.final_anterior_mat(:,:,i)));   
     for j = 1:size(a_mat_pix,1)
         for k = 1:size(a_mat_pix,2)
             [~, a_mat_pix(j,k)] = min(abs(ap_x_projection-cluster_struct.final_anterior_mat(j,k,i)));            
@@ -66,6 +66,7 @@ for i = 1:length(set_index)
             [~, c_mat_pix(j,k)] = min(abs(ap_x_projection-cluster_struct.final_centroid_mat(j,k,i)));            
         end
     end        
+%     error('afa')
     if flip_flag
         a_mat_pix = xDim - a_mat_pix + 1;
         p_mat_pix = xDim - p_mat_pix + 1;
@@ -79,7 +80,6 @@ for i = 1:length(set_index)
     elseif i == 11
         edge_flags(:,4) = 0; % ditto for 11
     end
-%     error('asfa')
     % remove edge cases
     a_mat_pix(edge_flags==1|isnan(edge_flags)) = NaN;
     p_mat_pix(edge_flags==1|isnan(edge_flags)) = NaN;
@@ -115,6 +115,7 @@ for i = 1:length(set_index)
         end           
     end       
     fov_stripe_partitions(i).ap_x_pixel = ap_x_pixel;
+    fov_stripe_partitions(i).ap_x_pixel1 = ap_x_pixel1;
 %     error('afs')
     fov_stripe_partitions(i).plot_times = plot_times;    
     fov_stripe_partitions(i).stripe_id_mat = set_stripe_map;

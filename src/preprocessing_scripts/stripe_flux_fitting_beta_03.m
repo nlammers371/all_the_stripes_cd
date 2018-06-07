@@ -35,7 +35,7 @@ xDim = size(fov_stripe_partitions(1).stripe_id_mat(:,:,1),2);
 yDim = size(fov_stripe_partitions(1).stripe_id_mat(:,:,1),1);
 %%% Smoothing Kernel
 stripe_radius = round(mean([fov_stripe_partitions.ap_x_pixel]))*.015; % pixels 
-kernel_radius = 60; % radius of gauss kernel...nucleus diameter ~= 20-25
+kernel_radius = 60; % radius of gauss kernel.nucleus diameter ~= 20-25
 kernel_sigma = 15; 
 [x_ref_kernel, y_ref_kernel] = meshgrid(1:2*kernel_radius+1,1:2*kernel_radius+1);
 x_ref_kernel = x_ref_kernel - kernel_radius - 1;
