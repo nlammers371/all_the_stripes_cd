@@ -4,7 +4,7 @@
 %%%-----------------------Load Inference Results-------------------------%%
 
 addpath('../utilities/');
-clear all
+clear 
 close all
 %%%%%%-----Set System Params
 w = 7; %memory assumed for inference
