@@ -36,7 +36,7 @@ sim_struct = struct;
 for i = 1:numel(sim_ids)
     for j = 1:numel(constant_rates)
         ID = sim_ids{i};
-        ID_iter = ([ID '_' num2str(constant_rates(j))]);
+        ID_iter = ([ID '_' num2str(round(1000*constant_rates(j)))]);
         c_rate = constant_rates(j);
         
         ind = (i-1)*numel(constant_rates) + j;
@@ -69,7 +69,7 @@ for i = 1:numel(sim_ids)
             koff_vec(n) = koff;
             f_vec(n) = nanmean(traces{n});        
         end
-        sim_struct(ind).ID = sim_ids{i};    
+        sim_struct(ind).ID = ID_iter;    
         sim_struct(ind).dT = dT;
         sim_struct(ind).fluo_data  = traces;
         sim_struct(ind).trace_time = trace_time;
@@ -98,6 +98,7 @@ for i = 1:numel(sim_ids)
         title(['k_{on} vs. k_{off} (' sim_ids{i} ')'])
         colorbar
         saveas(rate_scatter,[FigPath 'rate_scatter_' ID_iter '.png'])
+        close all
     end
 end
 save([DataPath 'sim_data_03.mat'],'sim_struct')

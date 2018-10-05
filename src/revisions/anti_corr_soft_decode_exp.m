@@ -57,7 +57,7 @@ if isempty(filenames)
 end
 %%% load inference traces 
 load(['..\..\dat\' project '\inference_traces_' project '_dT20.mat']);
-%%
+
 %Iterate through result sets and concatenate into 1 combined struct
 glb_all = struct;
 f_pass = 1;
