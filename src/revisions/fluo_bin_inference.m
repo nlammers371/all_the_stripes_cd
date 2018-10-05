@@ -1,7 +1,7 @@
 % Script to Conduct HMM Inference on Experimental Data
 close all
 clear 
-savio = 0; % Specify whether inference is being conducted on Savio Cluster
+savio = 1; % Specify whether inference is being conducted on Savio Cluster
 stripe_ref = 0:7; % only used for savio inference
 
 if savio
